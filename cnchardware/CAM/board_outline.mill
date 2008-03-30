@@ -1,0 +1,128 @@
+G04 FreePCB version 1.341*
+G04 E:\freepcb\projects\CNCMill\CAM\board_outline.grb*
+G04 board outline layer *
+G04 Scale: 100 percent, Rotated: No, Reflected: No *
+%FSLAX24Y24*%
+%MOIN*%
+%LNTop*%
+%ADD10C,0.005000*%
+
+G04 Step and Repeat for panelization *
+
+G04 ----------------------- Draw board outline (positive)*
+%LPD*%
+G54D10*
+G01X-30000Y-20000D02*
+G01X-30000Y20400D01*
+G04 end of side 1*
+G01X30000Y20400D01*
+G04 end of side 2*
+G01X30000Y-19600D01*
+G04 end of side 3*
+G01X-30000Y-20000D01*
+G04 end of side 4*
+G01X-30000Y-20000D01*
+
+G04 -------------- Draw Parts, Pads, Traces, Vias and Text (positive)*
+%LPD*%
+G04 Draw part C1*
+G04 Draw part C2*
+G04 Draw part C3*
+G04 Draw part C4*
+G04 Draw part C5*
+G04 Draw part C6*
+G04 Draw part C7*
+G04 Draw part C8*
+G04 Draw part CONN232*
+G04 Draw part CONNIO*
+G04 Draw part CONXLM*
+G04 Draw part CONXSM*
+G04 Draw part CONYLM*
+G04 Draw part CONYSM*
+G04 Draw part CONZLM*
+G04 Draw part CONZSM*
+G04 Draw part D1*
+G04 Draw part D2*
+G04 Draw part D3*
+G04 Draw part D4*
+G04 Draw part DCPWR3*
+G04 Draw part IC1*
+G04 Draw part IC2*
+G04 Draw part IC3*
+G04 Draw part IC4*
+G04 Draw part KD*
+G04 Draw part KV*
+G04 Draw part LED1*
+G04 Draw part LED2*
+G04 Draw part LED3*
+G04 Draw part LED4*
+G04 Draw part LED5*
+G04 Draw part LED6*
+G04 Draw part LED7*
+G04 Draw part LED8*
+G04 Draw part LED9*
+G04 Draw part LED10*
+G04 Draw part LED11*
+G04 Draw part LED12*
+G04 Draw part LED13*
+G04 Draw part LED14*
+G04 Draw part Q1*
+G04 Draw part Q2*
+G04 Draw part Q3*
+G04 Draw part Q4*
+G04 Draw part Q5*
+G04 Draw part Q6*
+G04 Draw part Q7*
+G04 Draw part Q8*
+G04 Draw part Q9*
+G04 Draw part Q10*
+G04 Draw part Q11*
+G04 Draw part Q12*
+G04 Draw part Q13*
+G04 Draw part Q14*
+G04 Draw part R1*
+G04 Draw part R2*
+G04 Draw part R3*
+G04 Draw part R4*
+G04 Draw part R5*
+G04 Draw part R6*
+G04 Draw part R7*
+G04 Draw part R8*
+G04 Draw part R9*
+G04 Draw part R10*
+G04 Draw part R11*
+G04 Draw part R12*
+G04 Draw part R13*
+G04 Draw part R14*
+G04 Draw part R15*
+G04 Draw part R16*
+G04 Draw part R17*
+G04 Draw part R18*
+G04 Draw part R19*
+G04 Draw part R20*
+G04 Draw part R21*
+G04 Draw part R22*
+G04 Draw part R23*
+G04 Draw part R24*
+G04 Draw part R25*
+G04 Draw part R26*
+G04 Draw part R27*
+G04 Draw part R28*
+G04 Draw part R29*
+G04 Draw part S1*
+G04 Draw part X1*
+G04 Draw part HOLE1*
+G04 Draw part HOLE2*
+G04 Draw part HOLE3*
+G04 Draw part HOLE4*
+G04 Draw part ACCONN*
+G04 Draw part RLYCONN*
+G04 Draw part VCCTP*
+G04 Draw part PWRCONN*
+G04 Draw part IC5*
+
+G04 Draw traces*
+
+G04 Draw Text*
+M00*
+M02*
