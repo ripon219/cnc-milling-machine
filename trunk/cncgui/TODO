@@ -1,0 +1,26 @@
+Stuff to do:
+
+   ** Abort on brownout reset!
+   ** Figure out why sometimes the mill location is out of sync
+   ** Add firmware Version command and use it to display version in GUI
+
+   ** Report exactly which limit switch tripped!!
+   ** Log to a text area with access from Gui
+   ** Direct command entry to firmware
+   * Allow load as trace or load as Mill for a gerber file
+   * Create MilledPolygon to approximate milling of a larger cutout (hole) w/geometry
+      * Use an interior buffer to calculate, and optionally rasterize interior
+      * Edit process to convert DrilledHole to MilledPolygon
+   * Allow processing of milled in depth steps (5 steps at a time for example) - Odd Number of passes!
+   * Associate isolation mills with traces
+   * Save feature (to XML file??)
+   * Track tools changes for isolation traces.
+   * Allow rasterizing of a polygon with smaller tools
+   * Tool Pallete (milling tools available for selection) - add tool dialog
+   * Z-Axis speed for drill file.
+   * Isolate traces should prompt for tool and depth
+   * Link job properties to actions (with tool)
+   * Complete Edit - Move option (offset or use mouse)
+   * Complete Edit - Properties
+   * Use completion flags for run-restart (clear completions), or run - Continue (bypass completed)
+   * Split actions to a seperate thread and show progress bar.

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<java version="1.5.0_11" class="java.beans.XMLDecoder"> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Purple Drill 0.0256</string> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>6</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Black Drill 0.0625</string> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>15</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Blue Drill 0.0360</string> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>8</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Blue Drill 0.0430</string> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>10</int> 
+  </void> 
+ </object> 
+</java> 
