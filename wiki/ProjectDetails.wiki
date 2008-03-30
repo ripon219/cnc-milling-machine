@@ -40,6 +40,8 @@ Because this open-source project is more about software than hardware, I will li
 
 === The Java Swing Controller application ===
 
+http://cnc-milling-machine.googlecode.com/svn/wiki/screenshot.PNG
+
 This is a Java Swing application that was originally designed just to provide a graphical view of the milling machine so it would be easier to manually control and track the status of the machine.
 
 It evolved to a fully featured control program that:
@@ -118,7 +120,7 @@ The microcode implements the following commands:
 
 The Java program accomplishes its magic by sending combinations of these commands.  The microcode indicates it is ready to receive a command by sending a ‘$’ prompt.  Commands do not return the $ prompt until they are complete.
 
-You may note that the “Mx+nnn[y+mmm]” command does ONLY relative motions.  The machine does track its position, but it is the job of the Java program to translate the current position and desired position in to relative motions to get there.  It is also limited to 254 steps per movement.  What can I say – it’s an 8 bit processor and I am lazy.
+You may note that the “Mx+nnn[y+mmm]�? command does ONLY relative motions.  The machine does track its position, but it is the job of the Java program to translate the current position and desired position in to relative motions to get there.  It is also limited to 254 steps per movement.  What can I say – it’s an 8 bit processor and I am lazy.
 
 The simultaneous movement of both x and y axis at a time uses a modified [ http://en.wikipedia.org/wiki/Bresenham's_line_algorithm Bresenham line algorithm] to move the cutting head in the best possible straight line between the current point and the offset point.  The z axis is moved independently. When either the x or y axis is moved with the z axis in a single command, the z axis is always moved first.  The net result is this version is good for 2D milling, but not 3D milling at this time.
 
@@ -152,6 +154,8 @@ Holding Current on for an axis means that the stepper is locked into its current
 
 
 ===  Hardware: The Electronic circuit design ===
+
+http://cnc-milling-machine.googlecode.com/svn/wiki/electronics.jpg
 
 The electronics portion of this project consists of a unipolar stepper motor and relay driver board that was actually milled and drilled using a breadboard prototype version of the same circuit to drive the milling machine.
 
@@ -254,7 +258,7 @@ Truth be told, in my first board, a lost step problem caused by running the mach
 
 The board does not include any pull-up resistors for the limit switches.  In my implementation, I built these into the solderless bullet connectors I was forced to use.  I did this to save space and allow flexibility in the connection of the switches.  I now think this was a mistake.  In the next version, I will probably include weak pull-up resistors on the PCB (or use PORTB, which provides for software controlled weak pull-ups)
 
-In fact, I would re-think much of the limit switch configuration.  Certainly, limit switches are important, but not so much as I once thought.  The reality is that limit switches should *not* be tripped in normal machine operations, and there is really no way to automatically handle the case that they are tripped.  If I was starting over, I would likely include a single limit switch input pin that goes active low when tripped.  I would wire all of the switches in series to that one pin with a single pull up resistor on the PCB.  If the pin goes low, software should stop the machine and say “fix it!” to the operator.  It really should be pretty obvious what caused a limit switch to trip, so it really is not necessary to track each switch separately in hardware and software.
+In fact, I would re-think much of the limit switch configuration.  Certainly, limit switches are important, but not so much as I once thought.  The reality is that limit switches should *not* be tripped in normal machine operations, and there is really no way to automatically handle the case that they are tripped.  If I was starting over, I would likely include a single limit switch input pin that goes active low when tripped.  I would wire all of the switches in series to that one pin with a single pull up resistor on the PCB.  If the pin goes low, software should stop the machine and say “fix it!�? to the operator.  It really should be pretty obvious what caused a limit switch to trip, so it really is not necessary to track each switch separately in hardware and software.
 
 The final functional piece is a MAX232 equivalent line driver to convert the TTL logic level serial TX/RX from TTL to RS-232 levels to interface with my laptop.  I ended up using a Texas Instruments equivalent because they are (and I am) cheap.   With 3+ amps of power needed to drive the motors, I didn’t see any need to use a low power variant of the MAX232.  Any chip with the same pinout will work here.  I actually used 10uf caps instead of the 1uf required, because, of course, that is what I had laying around.
 
@@ -262,7 +266,7 @@ All of the power and ground connections route to a single power connector in a .
 
 The firmware was modified to match the best board design rather than forcing the board routing to match the software.  This is most evident in the connectors for the limit switches.
 
-I started designing the board with the free version of Eagle, but soon found that it was way too limiting for board size.  I had space for a 4” x 6” board, and clearly I was going to need it.  This sent me looking for a nice free PCB design program.
+I started designing the board with the free version of Eagle, but soon found that it was way too limiting for board size.  I had space for a 4�? x 6�? board, and clearly I was going to need it.  This sent me looking for a nice free PCB design program.
 
 I found [http://www.freepcb.com/ FreePCB], which is wonderfully featured easy to use PCB design program.  It is also open source, with an active community supporting the software and the users.  
 
@@ -281,18 +285,20 @@ In the first version of the board:
 
 ===  Mechanical: The Physical Machine ===
 
+http://cnc-milling-machine.googlecode.com/svn/wiki/TopView.JPG
+
 The actual milling machine hardware is designed around Dremel tool mounted on a Z-Axis that moves up and down at a fixed position over a table surface that moves in two dimensions (X and Y).  
 
 The best single reference I found for anyone that wants to build one of these is [http://www.liutaiomottola.com/Tools/CNCRouter.htm].  This page has detailed information and a 95 page document on how to build a machine very similar to the one I ended up with.  Download it and read it.  There are some great ideas in here that I am not going to repeat.
 
 My machine is basically the one described in the above link, except:
 
-   * My machine has a usable milling surface of 7.5” x 10.5 inches.
-   * The Z axis has a total travel of about 4”, but the distance between the table and the bottom of the fixed part of the z-axis is about 2”.  The practical limit on the height of the piece to be milled is 2”.
+   * My machine has a usable milling surface of 7.5�? x 10.5 inches.
+   * The Z axis has a total travel of about 4�?, but the distance between the table and the bottom of the fixed part of the z-axis is about 2�?.  The practical limit on the height of the piece to be milled is 2�?.
    * I built my own stepper motor controller because I am way to cheap to pay $200 for something I can build from my scrap box, and it was a lot more fun that way.
    * I used stepper motors from salvaged Ink Jet printers.  I took apart quite a few, so I am not sure which one I ended up using.  At some point I may upgrade these to something a bit beefier so I can get a little more speed without losing too much torque.
    * I purchased a complete Z-Axis assembly with the drive screw and stepper motor already attached from a seller on EBay.  The one I got has an aluminum body, min and max limit switches (actually a very cool optical slotted switch with a sprint assembly that triggers the same limit circuit for min and max limits.  The tool mounting is on a spring platform that allows some give – great for drilling!  This included a 12v bipolar capable stepper motor, acme drive screw, guide rails, and limit switch circuitry.  You will probably not find one of these, so buy and improvise your own, or build the one from the webpage.  The motor and drive screw combination gives me 230 steps per inch (about a .004/inch resolution)
-   * I found a lot of 10 precision Acme drive screws and matching nuts, also on Ebay, for less than I could have purchased one of the drive screws.  I used  two – one for the x axis and one for y axis.  These were 23” long, 19” of that was threaded.  This necessitated scaling up the length of the x and y axis.  
+   * I found a lot of 10 precision Acme drive screws and matching nuts, also on Ebay, for less than I could have purchased one of the drive screws.  I used  two – one for the x axis and one for y axis.  These were 23�? long, 19�? of that was threaded.  This necessitated scaling up the length of the x and y axis.  
       * The ends of the drive screws had different diameter steps that I used in my design to provide thrust management.  I drilled a hole and positioned the end of the drive screw through the hole so that one of the steps in the rod end was flush with the outside edge of the UHMW end cap.  Another piece of UHMW holds a brass washer against the diameter step to prevent it from moving outward.  A second brass washer and a shaft collar on the outside of the hold down UHMW piece keeps the screw from moving in the other direction, and prevents the thrust force from being transmitted to the Stepper motor on the other end of the assembly.
       * The Ebay acme nuts were also totally different – essentially a round nut with two symmetric half-circles on opposite sides.  I used drilled holes with pins that held this into place in the routed linear slide components.  This had the additional benefit of allowing some freedom in the orientation of the screw so it need not be perfectly straight in the linear slide to prevent binding.
       * I still have 8 of the Acme drive screws if anyone is interested.  I will eventually sell them on EBay, but I can be convinced to do it sooner if anyone is interested.
