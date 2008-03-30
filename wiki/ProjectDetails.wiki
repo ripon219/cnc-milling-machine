@@ -155,7 +155,7 @@ Holding Current on for an axis means that the stepper is locked into its current
 
 ===  Hardware: The Electronic circuit design ===
 
-http://cnc-milling-machine.googlecode.com/svn/wiki/electronics.jpg
+http://cnc-milling-machine.googlecode.com/svn/wiki/electronics.JPG
 
 The electronics portion of this project consists of a unipolar stepper motor and relay driver board that was actually milled and drilled using a breadboard prototype version of the same circuit to drive the milling machine.
 
