@@ -1,4 +1,5 @@
 #summary Detailed description of the project contents
+#labels Featured,Phase-Design
 
 =  CNC PCB Milling Machine Project =
 
