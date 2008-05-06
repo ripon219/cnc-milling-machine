@@ -41,7 +41,6 @@ public class TracePad extends MillingGeometryAction {
 		newPad.setComplete(isComplete());
 		newPad.setDisplayOnly(displayOnly);
 		newPad.setSelected(isSelected());
-		newPad.setShowVertices(isShowVertices());
 		return newPad;
 	}
 	
@@ -70,7 +69,7 @@ public class TracePad extends MillingGeometryAction {
 	}
 
 	public String toString() {
-		return "TracePad(id="+getId()+" "+getGeometry().toText()+")";
+		return "TracePad(id="+getId()+" @("+xpos+","+ypos+") Size="+width+"x"+height+")";
 	}
 	
 	

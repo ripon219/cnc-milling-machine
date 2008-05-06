@@ -20,6 +20,8 @@ public class NewToolDialog extends JDialog {
 	private JTextField tfDiameter;
 	private JTextField tfDesc;
 
+	private JTextField tfMaxDepth;
+
 	public NewToolDialog(Dialog parent) {
 		super(parent);
 		setTitle("Create a new Tool");
@@ -41,6 +43,10 @@ public class NewToolDialog extends JDialog {
 		content.add(new JLabel("Description"));
 		tfDesc = new JTextField();
 		content.add(tfDesc);
+		
+		content.add(new JLabel("Max Depth per pass"));
+		tfMaxDepth = new JTextField("0");
+		content.add(tfMaxDepth);
 		
 		tfDesc.addFocusListener(new FocusAdapter() {
 		
@@ -86,7 +92,16 @@ public class NewToolDialog extends JDialog {
 		
 		String desc = tfDesc.getText();
 		
-		return new Tool(type, diameter, desc);
+		int maxDepth = 0;
+		try {
+			maxDepth = Integer.parseInt(tfMaxDepth.getText());
+		} catch (NumberFormatException e) {
+			log.debug("max depth per pass is not a valid number",e);
+		}
+		
+		Tool tool = new Tool(type, diameter, desc);
+		tool.setMaxDepth(maxDepth);
+		return tool;
 	}
 
 }

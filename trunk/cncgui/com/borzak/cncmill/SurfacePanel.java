@@ -29,6 +29,7 @@ public class SurfacePanel extends JPanel {
 	private AffineTransform transform = new AffineTransform();
 	private JScrollPane surfaceScroll;
 	MillingActionList actions = null;
+	MillingProperties properties = null;
 	
 	private class ViewportDragListener extends MouseAdapter implements MouseMotionListener {
 		Point dragOrigin = null;
@@ -348,6 +349,21 @@ public class SurfacePanel extends JPanel {
 			viewPos.y = yHeight;
 		}
 		surfaceScroll.getViewport().setViewPosition(viewPos);
+	}
+
+
+	public boolean isShowVertices() {
+		return properties.isShowVertices();
+	}
+
+
+	public MillingProperties getProperties() {
+		return properties;
+	}
+
+
+	public void setProperties(MillingProperties properties) {
+		this.properties = properties;
 	}
 
 	

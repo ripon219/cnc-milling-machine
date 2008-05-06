@@ -7,13 +7,11 @@ package com.borzak.cncmill;
  */
 public class JobProperties {
 
-	public static final int MY_FORMAT = 0;
-	public static final int RML_FORMAT = 1;
-	public static final int NC_FORMAT = 2;
-	public static final int RS274X_FORMAT = 3;
+	public static final int RML_FORMAT = 0;
+	public static final int NC_FORMAT = 1;
+	public static final int RS274X_FORMAT = 2;
 	
 	private static final String[] format_xlate = new String[] {
-		"My Format",
 		"RML Format",
 		"NC Drill Format",
 		"RS274X Gerber Format"
@@ -24,7 +22,7 @@ public class JobProperties {
 	private boolean replace=true;
 	private boolean displayOnly=false;
 	private boolean skipShort=true;
-	private int fileFormat = MY_FORMAT;
+	private int fileFormat = RS274X_FORMAT;
 	private String filename=".";
 	private int depth=15;
 	private int diameter=4;

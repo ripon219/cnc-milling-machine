@@ -11,8 +11,6 @@ import javax.swing.*;
 import org.apache.commons.logging.*;
 
 import com.vividsolutions.jts.geom.*;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.linearref.*;
 import com.vividsolutions.jts.operation.buffer.*;
 import com.vividsolutions.jts.simplify.*;
@@ -27,7 +25,7 @@ import com.vividsolutions.jts.util.*;
  *
  */
 public class MillingActionList implements MaskConstants {
-	private static Log log = LogFactory.getLog(MillingActionList.class);
+	static Log log = LogFactory.getLog(MillingActionList.class);
 	
 	PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 	List actionsList = new ArrayList();
@@ -39,8 +37,21 @@ public class MillingActionList implements MaskConstants {
 	Rectangle bounds = null;
 	
 	private int selectionCount = -1;
+
+	private List commandList = new ArrayList();
+	private MillingMachineFrame frame = null;
 	
-	
+	public MillingActionList(MillingMachineFrame frame) {
+		this.frame = frame;
+	}
+
+	public Tool showToolSelection(String desc, JPanel extraPanel) {
+		return frame.showToolSelection(desc, extraPanel);
+	}
+
+
+
+
 	public void saveUndoBuffer() {
 		List newList = new ArrayList();
 		newList.addAll(actionsList);
@@ -183,305 +194,7 @@ public class MillingActionList implements MaskConstants {
 		drawAll();
 	}
 	
-	protected void isolateTraces(int distance) {
-		int depth = 2;
-		
-		List list = getSelectedList(MASK_TRACE | MASK_GEOMETRY);
-		
-		// Now buffer all the traces
-		int radius = distance/2;
-		
-		log.debug("Calculating buffers at distance "+distance);
 
-		List newActions = new ArrayList();
-		
-		for (Iterator iter = list.iterator(); iter.hasNext();) {
-			MillingGeometryAction a = (MillingGeometryAction) iter.next();
-			Geometry g = a.getGeometry();
-			
-			g = g.buffer(radius,0,BufferOp.CAP_BUTT); 
-			Coordinate c[] = g.getCoordinates();
-			for (int i = 1; i < c.length; i++) {
-				Coordinate start = c[i-1];
-				Coordinate end = c[i];
-				newActions.add(new MilledLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, depth, distance));
-			}
-		}
-		
-		// discard current traces, etc. and replace with new polygons
-		saveUndoBuffer();
-		addAll(newActions);
-		drawAll();
-	}
-
-	public void fattenTraces(double ddistance) {
-
-		List list = getSelectedList(MASK_TRACE | MASK_GEOMETRY);
-		List newActions = new LinkedList();
-		
-		// Now fatten all the traces
-		log.debug("Calculating buffers at distance "+ddistance);
-		
-		
-		for (Iterator iter = list.iterator(); iter.hasNext();) {
-			MillingGeometryAction a = (MillingGeometryAction) iter.next();
-			Geometry g = a.getGeometry();
-			g = g.buffer(ddistance,0,BufferOp.CAP_SQUARE);
-			newActions.add(new TracePolygon(g));
-		}
-		
-		saveUndoBuffer();
-		// Add the new traces
-		addAll(newActions);
-		// discard the existing traces
-		removeAll(list);
-		drawAll();
-	}
-	
-	public void calculateTraces(ProgressStatusBar status) {
-		//First create a set of Geometry objects for each trace and pad
-
-		status.setMessage("Calculating traces");
-		status.startProgress(0);
-		
-		List list = getSelectedList(MASK_COMBINABLE | MASK_GEOMETRY);
-		status.startProgress(list.size()*2);
-		
-		// Now the list contains all of the Geometrys associated with the actions
-		// loop through each to find intersections
-
-		MillingGeometryAction[] garray = (MillingGeometryAction[]) list.toArray(new MillingGeometryAction[list.size()]);
-
-		
-		int traces[] = new int[garray.length];
-		int traceCounter = 0;
-		Geometry pg[] = new Geometry[garray.length];  // Geometrys
-		
-		for (int outer = 0; outer < garray.length; outer++) {
-			Geometry gouter = garray[outer].getGeometry();
-			boolean matched = false;
-			for (int inner = 0; inner < garray.length; inner++) {
-				if (outer != inner) {
-					Geometry ginner = garray[inner].getGeometry();
-					if (gouter.intersects(ginner)) {
-						matched = true;
-						log.debug("Intersection "+outer+":"+gouter+" with "+inner+":"+ginner);
-						if (traces[outer] == 0  && traces[inner] == 0) {
-							traces[outer] = traceCounter;
-							traces[inner] = traceCounter;
-							pg[traceCounter] = gouter.union(ginner);
-							traceCounter++;
-						} else if (traces[outer] == 0) {
-							int trace = traces[inner];
-							traces[outer] = trace;
-							pg[trace] = pg[trace].union(gouter);
-						} else {
-							int trace = traces[outer];
-							traces[inner] = trace;
-							pg[trace] = pg[trace].union(ginner);
-						}
-					}
-				
-				}
-			}
-			if (!matched) {
-				traces[outer] = traceCounter;
-				pg[traceCounter] = gouter;
-				traceCounter++;
-			}
-			status.incrementProgress(outer,list.size()*2);
-		}
-		
-		log.debug("Found "+traceCounter+" Unique traces on first pass");
-		status.setMessage("First pass found "+traceCounter+" traces. Combining...");
-		// Second Pass: looking for any intersections between remaining traces
-
-		boolean attached = false; // set true if any intersections are found
-		int passes = 0;
-		do {
-			passes++;
-			log.debug("Staring pass #"+passes);
-			attached = false; // assume no changes
-			for (int outer = 0; outer < traceCounter; outer++) {
-				Geometry gouter = pg[outer];
-				if (gouter != null) {
-					for (int inner = 0; inner < traceCounter; inner++) {
-						
-						try {
-							if (inner != outer) {
-								Geometry ginner = pg[inner];
-								if (ginner != null && gouter.intersects(ginner)) {
-									// Join these traces
-									gouter = ginner.union(gouter);
-									pg[outer] = gouter;
-									pg[inner] = null;
-									attached = true;
-								}
-							}
-						} catch (TopologyException e) {
-							log.info("Ignored exception",e);
-						}
-					}
-				}
-				
-			}
-		} while (attached);
-
-		saveUndoBuffer();
-		// discard current traces, etc. and replace with new polygons
-		removeAll(list);
-		status.setMessage("Creating "+traceCounter+" traces...");
-		int count = 0;
-		for (int i = 0; i < traceCounter; i++) {
-			Geometry g = pg[i];
-			if (g != null) {
-				add(new TracePolygon(g));
-				count++;
-			}
-			status.incrementProgress(traceCounter+i,traceCounter*2);		
-		}
-		log.debug("Found "+count+" Unique traces at end");
-		status.stopProgress();
-		status.setMessage("Trace calculation completed. "+count+" traces created");
-		drawAll();
-		
-	}
-	
-	public void simplifyTraces(double distance) {
-
-		List list = getSelectedList(MASK_TRACE | MASK_GEOMETRY);
-		List newActions = new LinkedList();
-		
-		// Now simplify all the traces
-		log.debug("Simplifying traces");
-		
-		
-		for (Iterator iter = list.iterator(); iter.hasNext();) {
-			MillingGeometryAction a = (MillingGeometryAction) iter.next();
-			Geometry g = a.getGeometry();
-			newActions.add(new TracePolygon(TopologyPreservingSimplifier.simplify(g,distance)));
-		}
-		
-		saveUndoBuffer();
-		// Add the new traces
-		addAll(newActions);
-		// discard the existing traces
-		removeAll(list);
-		drawAll();
-	}
-
-	public void rasterizeInterior(ProgressStatusBar status, Tool tool, int depth) {
-
-		List list = getSelectedList(MASK_TRACE | MASK_GEOMETRY);
-		list.addAll(getSelectedList(MASK_DRILL));
-		status.setMessage("Rasterizing "+list.size()+" actions");
-		status.startProgress(list.size()+1);
-
-		List newActions = new LinkedList();
-		List removeActions = new LinkedList();
-		
-		// Now simplify all the traces
-		log.debug("Rasterize Interior");
-		
-		int progressCount=0;
-		GeometryFactory gf = MillingAction.geoFactory;
-
-		for (Iterator iter = list.iterator(); iter.hasNext();) {
-			
-			Object o = iter.next();
-			Geometry g = null;
-			Object removeAction = null;
-			if (o instanceof MillingGeometryAction) {
-				MillingGeometryAction a = (MillingGeometryAction) o;
-				g = a.getGeometry();
-			} else if (o instanceof DrilledHole) {
-				DrilledHole hole = (DrilledHole) o;
-				if (hole.getToolDiameter() > tool.getStepDiameter() ) {
-					g = gf.createPoint(new Coordinate(hole.getXpos(), hole.getYpos()));
-					g = g.buffer(hole.getToolDiameter()/2,3,BufferOp.CAP_ROUND);
-					removeAction = hole;
-				} else {
-					log.info("Skipping hole smaller than tool size: "+hole);
-					g = null;
-				}
-			}
-			
-			// Rasterize the interior of this geometry
-			
-			// If it has holes, rasterize the holes
-			if (g != null && g instanceof Polygon) {
-				Polygon p = (Polygon) g;
-				int holes = p.getNumInteriorRing();
-				if (holes == 0) {
-					rasterizePolygon(tool, depth, newActions, p);
-				} else {
-					for (int n=0; n < holes; n++) {
-						LinearRing lr = gf.createLinearRing(p.getInteriorRingN(n).getCoordinates());
-						Polygon ip = gf.createPolygon(lr, new LinearRing[] {});
-						rasterizePolygon(tool, depth, newActions, ip);
-						if (removeAction != null) {
-							removeActions.add(removeAction);
-						}
-					}
-				}
-				
-			}
-			status.incrementProgress(progressCount++,list.size());
-		}
-		
-		saveUndoBuffer();
-		// remove anything that needs to be removed
-		removeAll(removeActions);
-		// Add the new traces
-		addAll(newActions);
-		drawAll();
-		status.stopProgress();
-		status.setMessage("Rasterizing "+list.size()+" actions");
-	}
-
-	private void rasterizePolygon(Tool tool, int depth, List newActions, Geometry g) {
-		GeometryFactory gf = MillingAction.geoFactory;
-		Polygon p = (Polygon) g;
-		int diameter = tool.getStepDiameter();
-		int radius = diameter/2;
-		Rectangle r = GeometryUtil.calculateBounds(p);
-		if (r == null) {
-			log.info("calculateBounds returned null!");
-		} else {
-			// Step though the hole in tool diameter steps
-			for (int y=r.y+(diameter/2); y < ((r.y+r.height)-diameter/2); y+=diameter) {
-				int startx = 0; 
-				int endx = 0;
-				boolean started = false;
-				for (int x=r.x+(diameter/2); x < ((r.x+r.width)-diameter/2); x+=1) {
-					Point pt = gf.createPoint(new Coordinate((int)x,(int)y));
-					
-					if (p.intersects(pt)) {
-						if (!started) {
-							startx = x;
-							endx = x;
-							started = true;
-						} else {
-							// save the last point
-							endx = x;
-						}
-					}
-				}
-				// whatever is in endpt is the end
-				newActions.add(new MilledLine(startx, y, endx, y, depth, tool.getStepDiameter()));
-			}
-			
-			// Finally, make a pass on the interior border
-			g=g.buffer(-radius,0,BufferOp.CAP_BUTT); 
-			Coordinate c[] = g.getCoordinates();
-			for (int i = 1; i < c.length; i++) {
-				Coordinate start = c[i-1];
-				Coordinate end = c[i];
-				newActions.add(new MilledLine((int)start.x, (int)start.y, (int)end.x, (int)end.y, depth, diameter));
-			}
-		}
-	}
-	
 	public SurfacePanel getSurface() {
 		return surface;
 	}
@@ -778,115 +491,33 @@ public class MillingActionList implements MaskConstants {
 		return f.format(new Integer(hours))+":"+f.format(new Integer(minutes))+":"+f.format(new Integer(seconds));
 	}
 
-	/**
-	 * Optimizes the order of milling and drilling operations to minimize tool changes
-	 * and reduce the amount of non-prodcutive movement.
-	 * This process can swap the ends of a milled trace if necessary.
-\	 */
-	public void optimizeMillPaths(ProgressStatusBar status) {
-		status.setMessage("Path optimization in progress");
-		status.startProgress(0);
-		List sortActions = new ArrayList();
-		List removeActions = new ArrayList();
-		List newActions = new ArrayList();
-		for (Iterator iter = actionsList.iterator(); iter.hasNext();) {
-			MillingAction action = (MillingAction) iter.next();
-			if (action.matches(MASK_DRILL) || action.matches(MASK_MILL)) {
-				if (!action.isComplete()) {
-					sortActions.add(action);
-					removeActions.add(action);
-				}
-			}
-		}
-		status.startProgress(sortActions.size());
-		// Now pick a start point (we'll use origin (0,0), and a tool and
-		//  start sequencing.
-		MillLocation cloc = new MillLocation(0,0,0);
-		Tool cTool = null;
-		
-		
-		while (!sortActions.isEmpty()) {
-			double dtot = 9999.0D;
-			int nindex = -1;
-			int cindex = -1;
-			MillingAction champ = null; 
-			// Loop to find the nearest location with the same tool
-			for (int i = 0; i < sortActions.size(); i++) {
-				MillingAction action = (MillingAction) sortActions.get(i);
-				// first check the tool
-				if (cTool != null && !cTool.equals(action.getTool())) continue;
-				for (int j = 0; j < action.getCoordinates().length; j++) {
-					MillLocation loc = action.getCoordinates()[j];
-					// calculate the distance
-					double dist = loc.distanceFrom(cloc);
-					if (dist < dtot) {
-						// its closer, so its better!
-						cindex = j;
-						nindex = i;
-						dtot = dist;
-						champ = action;
-					} else if (dist == dtot) {
-						// they are the same, pick the better one
-						if (cindex > j) { 
-							// this is better because it doesn't mean a swap
-							cindex = j;
-							nindex = i;
-							dtot = dist;
-							champ = action;
-						}
-					}
-				
-				}
-			}
-			if (champ != null) {
-				sortActions.remove(champ);
-				status.incrementProgress(newActions.size(),removeActions.size());
-				if (cindex > 0) {
-					// gotta swap the start and end of the MilledLine
-					champ =((MilledLine)champ).swapEnds();
-					newActions.add(champ);
-				} else {
-					newActions.add(champ);
-				}
-				cloc = champ.getEndPoint();
-				cTool = champ.getTool();
-				
-			} else {
-				// Could not find a matching tool - try again with null for any tool
-				cTool = null;
-			}
-		} 
-			
-		// When we get here, newActions contains the correctly ordered list
-		saveUndoBuffer();
-		actionsList.removeAll(removeActions);
-		actionsList.addAll(newActions);
-		status.stopProgress();
-		status.setMessage("Path optimization complete!");
-		fireCountChanged();
+	public void addCommand(AbstractAction command) {
+		// Registers the command as one to be enabled/disabled as a group
+		commandList.add(command);
 	}
 
-	public void mirrorActions() {
-		List list = getSelectedList(0);
-		List newActions = new LinkedList();
-		
-		// Now mirror x axis on all actions
-		log.debug("Mirroring around X axis");
-		
-		
-		for (Iterator iter = list.iterator(); iter.hasNext();) {
-			MillingAction a = (MillingAction) iter.next();
-			newActions.add(a.getMirrorX());
+	public void enableCommands(boolean enable) {
+		if (SwingUtilities.isEventDispatchThread()) {
+			internalEnableCommands(enable);
+		} else {
+			final boolean finalEnable = enable;
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					internalEnableCommands(finalEnable);
+				}
+			});
 		}
-		
-		saveUndoBuffer();
-		// Add the new traces
-		addAll(newActions);
-		// discard the existing traces
-		removeAll(list);
-		drawAll();
+	}
 
-		
+	private void internalEnableCommands(boolean enable) {
+		for (Iterator iter = commandList.iterator(); iter.hasNext();) {
+			AbstractAction action = (AbstractAction) iter.next();
+			action.setEnabled(enable);
+		}
+	}
+
+	public Iterator iterator() {
+		return actionsList.iterator();
 	}
 	
 	

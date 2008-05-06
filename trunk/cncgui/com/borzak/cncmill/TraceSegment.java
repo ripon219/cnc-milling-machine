@@ -14,8 +14,8 @@ import com.vividsolutions.jts.operation.buffer.*;
  */
 public class TraceSegment extends MillingGeometryAction {
 
-	private int xstart;
-	private int ystart;
+	protected int xstart;
+	protected int ystart;
 
 	/**
 	 * Create a MilledLine instance that has not yet been cut.
@@ -41,7 +41,6 @@ public class TraceSegment extends MillingGeometryAction {
 		newTrace.setComplete(isComplete());
 		newTrace.setDisplayOnly(displayOnly);
 		newTrace.setSelected(isSelected());
-		newTrace.setShowVertices(isShowVertices());
 		return newTrace;
 	}
 	
@@ -77,7 +76,7 @@ public class TraceSegment extends MillingGeometryAction {
 	}
 
 	public String toString() {
-		return "TraceSegment(id="+getId()+" "+getGeometry().toText()+")";
+		return "TraceSegment(id="+getId()+" ("+xstart+","+ystart+") to ("+xpos+","+ypos+") @Width="+toolDiameter+")";
 	}
 		
 }

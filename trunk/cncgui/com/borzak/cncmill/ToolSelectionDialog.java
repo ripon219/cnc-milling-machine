@@ -28,6 +28,7 @@ public class ToolSelectionDialog extends JDialog {
 	private JComboBox select;
 	private NewToolDialog newTool;
 	private JLabel lbDesc = null;
+	private JPanel extraPanel = new JPanel();
 
 	public ToolSelectionDialog(Frame parent) throws HeadlessException {
 		super(parent, "Tool Selection");
@@ -52,17 +53,23 @@ public class ToolSelectionDialog extends JDialog {
 		getContentPane().setLayout(new BorderLayout());
 		getContentPane().add("North",lbDesc = new JLabel());
 
-		JPanel center = new JPanel();
-		center.setLayout(new GridLayout(0,2));
+		JPanel centerTop = new JPanel();
 		
-		center.add(new JLabel("Select Tool:"));
+		centerTop.setLayout(new GridLayout(0,2));
+		
+		centerTop.add(new JLabel("Select Tool:"));
 		
 		select = new JComboBox();
-		center.add(select);
+		centerTop.add(select);
 		
 		select.addItem("<New Tool>");
 		
 		loadTools();
+		
+		JPanel center = new JPanel();
+		center.setLayout(new BorderLayout());
+		center.add("North",centerTop);
+		center.add("Center",extraPanel);
 
 		getContentPane().add("Center",center);
 		
@@ -181,6 +188,10 @@ public class ToolSelectionDialog extends JDialog {
 	public void setDescription(String desc) {
 		lbDesc.setText("Select Tool for: "+desc);
 		pack();
+	}
+
+	public JPanel getExtraPanel() {
+		return extraPanel;
 	}
 	
 	

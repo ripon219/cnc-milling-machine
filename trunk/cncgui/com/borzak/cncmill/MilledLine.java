@@ -17,6 +17,7 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 	private int xstart;
 	private int ystart;
 	private MillLocation[] coordinates = null;
+	private Tool tool;
 
 	/**
 	 * Create a MilledLine instance that has not yet been cut.
@@ -25,21 +26,21 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 	 * @param xstart The absolute X coordinate of the center of the end of the line
 	 * @param xend The absolute Y coordinate of the center of the end of the line
 	 * @param depth The depth of the tool cut in Z-steps
-	 * @param toolDiameter The diameter of the hole in x/y Steps - this determines the tool to use.
+	 * @param tool The tool to be used for the cut.
 	 */
-	public MilledLine(int xstart, int ystart, int xpos, int ypos, int depth, int toolDiameter) {
+	public MilledLine(int xstart, int ystart, int xpos, int ypos, int depth, Tool tool) {
 		super();
 		this.xstart = xstart;
 		this.ystart = ystart;
 		this.xpos = xpos;
 		this.ypos = ypos;
 		this.depth = depth;
-		this.toolDiameter = toolDiameter;
-		setShowVertices(false);
+		this.toolDiameter = tool.getStepDiameter();
+		this.tool = tool;
 	}
-	
+
 	public MillingAction getMirrorX() {
-		MilledLine newLine = new MilledLine(-xstart, ystart, -xpos, ypos, depth, toolDiameter);
+		MilledLine newLine = new MilledLine(-xstart, ystart, -xpos, ypos, depth, tool);
 		newLine.setComplete(isComplete());
 		newLine.setDisplayOnly(displayOnly);
 		newLine.setSelected(isSelected());
@@ -77,7 +78,7 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 			if (xstart != mill.getXLocation() || ystart != mill.getYLocation()) {
 				// If the drill is not at the start position, lift the Z-axis and move to start
 				// Raise Z and Move to start location
-				mill.moveTo(xstart,ystart,-10);
+				mill.moveTo(xstart,ystart,mill.getZSafe());
 			}
 			
 			// start the drill
@@ -85,8 +86,49 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 				drillWasOn = false;
 				mill.setDrillRelay(true); // turn on drill
 			}
-			mill.moveTo(xstart,ystart,depth); // postion to start
-			mill.moveTo(xpos, ypos,depth); // Cut the line
+			
+			// Added loop to cut a max of mill.getMaxMillDepth() per pass
+			
+			int passDepth = depth;
+			int maxPass = tool.getMaxDepth();
+			if (depth <=  maxPass || maxPass == 0) { 
+				mill.moveTo(xstart,ystart,depth); // postion to start
+				mill.moveTo(xpos, ypos,depth); // Cut the line
+			} else { // multiple passes needed
+				int total = 0;
+				int passes = 0;
+				passDepth = maxPass;
+				do {
+					total -= maxPass;
+					passes++;
+				} while (total > maxPass); 
+				passes++; 
+				// this is the minimum number of passes
+				if (passes%2 == 0) {
+					// if its even, add one to make it odd
+					passes++;
+				}
+				// now divide it out more evenly
+				passDepth = depth / passes + 1;
+				if (passDepth > maxPass) {
+					passDepth = maxPass;
+				}
+				
+				total = passDepth;
+				mill.moveTo(xstart,ystart,total); // postion to start
+				mill.moveTo(xpos, ypos,total); // Cut the line
+				
+				do {
+					// even pass
+					total += passDepth;
+					total = total <= depth ? total : depth; // max at depth
+					mill.moveTo(xstart, ystart,total); // Cut the line
+					// odd pass
+					total += passDepth;
+					total = total <= depth ? total : depth; // max at depth
+					mill.moveTo(xpos, ypos,total); // Cut the line
+				} while (total < depth); 
+			}
 			
 			if (!drillWasOn) {
 				mill.setDrillRelay(false); // turn off drill
@@ -160,7 +202,7 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 	}
 
 	public Tool getTool() {
-		return new Tool(Tool.ENDMILL, getToolDiameter());
+		return tool;
 	}
 	
 	/**
@@ -168,7 +210,7 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 	 * This is used in optimization routines.
 	 */
 	public MillingAction swapEnds() {
-		return new MilledLine(xpos, ypos, xstart, ystart, depth, toolDiameter);
+		return new MilledLine(xpos, ypos, xstart, ystart, depth, tool);
 	}
 
 }

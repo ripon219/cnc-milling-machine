@@ -12,6 +12,8 @@ import javax.comm.*;
 
 import org.apache.commons.logging.*;
 
+import com.sun.org.apache.xerces.internal.impl.xs.*;
+
 public class MillingMachine {
 	private static Log log = LogFactory.getLog(MillingMachine.class);
 
@@ -61,6 +63,10 @@ public class MillingMachine {
 	private PrintWriter portPrinter;
 	private PropertyChangeSupport listeners = new PropertyChangeSupport(this);
 
+	private float firmwareLevel = 0.0F;
+	
+	MillingProperties properties = new MillingProperties();
+
 	public MillingMachine() {
 		// Create with machine limits assuming x,y at center and z touching material at zero
 //		this(-1271,1271,-939,939, -705, 47);
@@ -75,6 +81,7 @@ public class MillingMachine {
 		this.yMax = yMax;
 		this.zMin = zMin;
 		this.zMax = zMax;
+		properties.load();
 	}
 
 	
@@ -88,116 +95,202 @@ public class MillingMachine {
  */	
 public void moveOffset(int xOffset, int yOffset, int zOffset) {
 	
-	MillLocation startLocation = getLocation();
-	
-	// first check for software limits
-	int newloc = xLocation + xOffset;
-	if (newloc < xMin || newloc > xMax) {
-		throw new MillingException(MillingException.SOFT_LIMIT, "X: "+newloc);
-	}
-
-	newloc = yLocation + yOffset;
-	if (newloc < yMin || newloc > yMax) {
-		throw new MillingException(MillingException.SOFT_LIMIT, "Y: "+newloc);
-	}
-
-	newloc = zLocation + zOffset;
-	if (newloc < zMin || newloc > zMax) {
-		throw new MillingException(MillingException.SOFT_LIMIT, "Z: "+newloc);
-	}
-	
-	
-	String sign = "+";
-	// all three specified - move Z first.
-	if (zOffset < 0) {
-		sign = "-";
-		zOffset = Math.abs(zOffset);
-	} else {
-		sign = "+";
-	}
-	int offset = 0;
-	while (zOffset > 0) { // handles bigger than 255 numbers
-		if (zOffset > 255) {
-			offset = 255;
-		} else {
-			offset = zOffset;
+	try {
+		MillLocation startLocation = getLocation();
+		
+		// first check for software limits
+		int newloc = xLocation + xOffset;
+		if (newloc < xMin || newloc > xMax) {
+			throw new MillingException(MillingException.SOFT_LIMIT, "X: "+newloc);
 		}
-		processCommand("MZ"+sign+toThreeChar(offset));
-		if (sign.equals("-")) {
-			zLocation -= offset;
-		} else {
-			zLocation += offset;
+
+		newloc = yLocation + yOffset;
+		if (newloc < yMin || newloc > yMax) {
+			throw new MillingException(MillingException.SOFT_LIMIT, "Y: "+newloc);
 		}
+
+		newloc = zLocation + zOffset;
+		if (newloc < zMin || newloc > zMax) {
+			throw new MillingException(MillingException.SOFT_LIMIT, "Z: "+newloc);
+		}
+		
+		
+		String sign = "+";
+		// all three specified - move Z first.
+		if (zOffset < 0) {
+			sign = "-";
+			zOffset = Math.abs(zOffset);
+		} else {
+			sign = "+";
+		}
+		int offset = 0;
+		while (zOffset > 0) { // handles bigger than 255 numbers
+			if (zOffset > 255) {
+				offset = 255;
+			} else {
+				offset = zOffset;
+			}
 			
-		zOffset -= offset;
-	}
-	
-	// Move x and y 
-	String xsign = "+"; 
-	if (xOffset < 0) {
-		xsign = "-"; 
-		xOffset = Math.abs(xOffset);
-	}
-	String ysign = "+";
-	if (yOffset < 0) {
-		ysign = "-";
-		yOffset = Math.abs(yOffset);
-	}
-	
-	while (xOffset > 0 || yOffset > 0) {
-		
-		double slope = (double)yOffset/(double)xOffset;
-		int xSteps = xOffset;
-		int ySteps = yOffset;
-
-		if (xOffset > 255 && xOffset >= yOffset) {
-			// calculate the number of ySteps based on 255 xSteps
-			xSteps = 255;
-			ySteps = (int)Math.round((double)xSteps * slope);
-		}
-		if (yOffset > 255 && yOffset > xOffset) {
-			// calculate the number of xSteps based on 255 ySteps
-			ySteps = 255;
-			xSteps = (int)Math.round((double)ySteps / slope);
-		}
-		String s = "M";
-		if (xSteps > 0) {
-			s = s + "X" + xsign + toThreeChar(xSteps);
-			if (xsign.equals("-")) { 
-				xLocation -= xSteps;
-			} else {
-				xLocation += xSteps;
+			MillingException me = null;
+			
+			String response = null;
+			try {
+				response = processCommand("MZ"+sign+toThreeChar(offset));
+			} catch (MillingException e) {
+				me = e;
+				response = e.getResponse();
 			}
-			xOffset -= xSteps;
+			
+			if (getFirmwareVersionAsFloat() >= 1.1F) {
+				int[] moves = extractMovement(response, new int[] {0,0,offset});
+				offset = moves[2];
+			}
+			
+			if (sign.equals("-")) {
+				zLocation -= offset;
+			} else {
+				zLocation += offset;
+			}
+				
+			zOffset -= offset;
+			
+			if (me != null) {
+				throw me; // rethrow the milling exception after handling the steps processed
+			}
 		}
 		
-		if (ySteps > 0) {
-			s = s + "Y" + ysign + toThreeChar(ySteps);
-			if (ysign.equals("-")) {
-				yLocation -= ySteps;
-			} else {
-				yLocation += ySteps;
-			}
-			yOffset -= ySteps;
+		// Move x and y 
+		String xsign = "+"; 
+		if (xOffset < 0) {
+			xsign = "-"; 
+			xOffset = Math.abs(xOffset);
 		}
-		if (s.length() > 1) {
-			processCommand(s);
+		String ysign = "+";
+		if (yOffset < 0) {
+			ysign = "-";
+			yOffset = Math.abs(yOffset);
 		}
-	}
+		
+		while (xOffset > 0 || yOffset > 0) {
+			
+			double slope = (double)yOffset/(double)xOffset;
+			int xSteps = xOffset;
+			int ySteps = yOffset;
 
-	if (simulating) {
-		// One second delay for simulations
-		try {
-			Thread.sleep(simulateDelay);
-		} catch (InterruptedException e) {
+			if (xOffset > 255 && xOffset >= yOffset) {
+				// calculate the number of ySteps based on 255 xSteps
+				xSteps = 255;
+				ySteps = (int)Math.round((double)xSteps * slope);
+			}
+			if (yOffset > 255 && yOffset > xOffset) {
+				// calculate the number of xSteps based on 255 ySteps
+				ySteps = 255;
+				xSteps = (int)Math.round((double)ySteps / slope);
+			}
+			String s = "M";
+			if (xSteps > 0) {
+				s = s + "X" + xsign + toThreeChar(xSteps);
+			}
+			
+			if (ySteps > 0) {
+				s = s + "Y" + ysign + toThreeChar(ySteps);
+			}
+			if (s.length() > 1) {
+				MillingException me = null;
+				
+				String response = null;
+				try {
+					response = processCommand(s);
+				} catch (MillingException e) {
+					me = e;
+					response = e.getResponse();
+				}
+				
+				if (getFirmwareVersionAsFloat() >= 1.1F) {
+					int[] moves = extractMovement(response, new int[] {xSteps,ySteps,0});
+					xSteps = moves[0];
+					ySteps = moves[1];
+				}
+				
+				if (xsign.equals("-")) { 
+					xLocation -= xSteps;
+				} else {
+					xLocation += xSteps;
+				}
+				xOffset -= xSteps;
+				if (ysign.equals("-")) {
+					yLocation -= ySteps;
+				} else {
+					yLocation += ySteps;
+				}
+				yOffset -= ySteps;
+
+				if (me != null) {
+					throw me; // rethrow the milling exception after handling the steps processed
+				}
+			}
+			
+		}
+
+		if (simulating) {
+			// One second delay for simulations
+			try {
+				Thread.sleep(simulateDelay);
+			} catch (InterruptedException e) {
+			} 
+		}
+		
+		// if we got this far, limits must all be off
+		clearLimits();
+
+		firePropertyChange("location", startLocation, getLocation());
+		log.info("Position: "+xLocation+","+yLocation+","+zLocation);
+	} catch (MillingException e) {
+		if (e.getReason() == MillingException.BROWNOUT_ERROR) {
+		// Special handling of brownouts during a move
+		// Assume this system has better location data than the mill does, so force it all back to 
+		// stored values
+		log.error("Reseting mill locations due to Brownout!");
+		calibrateX(xLocation);
+		calibrateY(yLocation);
+		calibrateZ(zLocation);
+		setXDelay(xDelay);
+		setYDelay(yDelay);
+		setZDelay(zDelay);
+		}
+		
+		throw e;
+	}
+}
+
+/**
+ * Extracts the raw number of processed x,y,and z steps from a
+ * movement response.  If this is an older firmware, the value 
+ * returned will always be zero, so that is worth trapping for.
+ * Movement steps are only provided by firmware v1.1 and up.
+ * @param response  The movement response to extract steps from
+ * @return int[] with three counts of steps in the order x,y,z
+ */
+private int[] extractMovement(String response, int[] inMoves) {
+	int[] moves = new int[3];
+	Pattern p = Pattern.compile("[xyz]+");
+	Matcher m = p.matcher(response);
+	if (m.find()) {
+		String s = m.group();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c == 'x') moves[0]++;
+			if (c == 'y') moves[1]++;
+			if (c == 'z') moves[2]++;
 		} 
 	}
+	if ((inMoves[0] != moves[0]) || (inMoves[1] != moves[1]) || (inMoves[2] != moves[2])) {
+		log.error("Step Mismatch - expected ("+inMoves[0]+","+inMoves[1]+","+inMoves[2]+
+				") got ("+moves[0]+","+moves[1]+","+moves[2]+")");
+	}
 	
-	// if we got this far, limits must all be off
-	clearLimits();
-
-	firePropertyChange("location", startLocation, getLocation());
-	log.info("Position: "+xLocation+","+yLocation+","+zLocation);
+	
+	return moves;
 }
 	
 /**
@@ -224,6 +317,50 @@ public void moveTo(int xAddress, int yAddress, int zAddress) {
 	moveOffset(xOffset, yOffset, zOffset);
 }
 
+
+private String toSignedFiveChar(int number) {
+	String sign = "";
+	if (number < 0) {
+		sign = "-";
+		number=0-number;
+	}
+	String s = Integer.toString(number);
+	if (s.length() < 5) {
+		s = "00000"+s;
+		s = s.substring(s.length()-5);
+	}
+	s = sign+s;
+	return s;
+}
+
+
+public void calibrateX(int newX) {
+	if (newX == 0) {
+		calibrateX();
+		return;
+	}
+	processCommand("CX="+toSignedFiveChar(newX));
+	xLocation = newX;
+}
+
+public void calibrateY(int newY) {
+	if (newY == 0) {
+		calibrateY();
+		return;
+	}
+	processCommand("CY="+toSignedFiveChar(newY));
+	yLocation = newY;
+}
+
+public void calibrateZ(int newZ) {
+	if (newZ == 0) {
+		calibrateZ();
+		return;
+	}
+	processCommand("CZ="+toSignedFiveChar(newZ));
+	zLocation = newZ;
+}
+
 public void calibrateX() {
 	processCommand("CX");
 	xLocation = 0;
@@ -239,6 +376,35 @@ public void calibrateZ() {
 	zLocation = 0;
 }
 
+public String getFirmwareVersion() {
+	String version;
+	try {
+		version = processCommand("F");
+		// strip off any leading or trailing whitespace
+		version = version.trim();
+	} catch (MillingException e) {
+		if (e.getReason() == MillingException.INVALID_COMMAND) {
+			version = "Default - Old Firmware V1.0"; 
+		} else {
+			throw e;
+		}
+	}
+	return version;
+}
+
+public float getFirmwareVersionAsFloat() {
+	if (firmwareLevel == 0.0F) {
+		// Look it up and parse it out
+		String version = getFirmwareVersion();
+		Pattern p = Pattern.compile("V[0-9]+\\.[0-9]+");
+		Matcher m = p.matcher(version);
+		if (m.find()) {
+			String shortVersion = m.group();
+			firmwareLevel = Float.parseFloat(shortVersion.substring(1));
+		}
+	}
+	return firmwareLevel;
+}
 
 public void readStatus() {
 	// This sends a list command and stores the result
@@ -355,8 +521,41 @@ private String processCommand(String command) throws RuntimeException {
 				"Vacuum="+(vacuumRelay?"1":"0")+"\n"+
 				"Limit Switch: X-axis min=0 max=0\n"+
 				"Limit Switch: Y-axis min=0 max=0\n"+
-				"Limit Switch: Z-axis min=0 max=0\n";
+				"Limit Switch: Z-axis min=0 max=0\n$ ";
 				return s;
+		}
+		if (command.equals("F")) {
+			return "Vince's SIMULATED Firmware V1.1\n$ ";
+		}
+		Pattern moveAxis = Pattern.compile("[XYZ][+-][0-9]{3}");
+		
+		
+		if (command.startsWith("M")) {
+			// Special case to simulate a Brownout for any move from 5,5 
+			if (xLocation == 5 && yLocation == 5) {
+			String response = "xyxy\n" +
+					"Vince's CNC MILL V1.1\n" +
+					"\n" +
+					"BROWNOUT RESET" +
+					"\n" +
+					"\n" +
+					"\n$ ";
+			throw new MillingException(response,MillingException.BROWNOUT_ERROR);
+			}
+			
+			// parse out the movements requested
+			StringBuffer response = new StringBuffer();
+			Matcher m = moveAxis.matcher(command);
+			while (m.find()) {
+				String axis = m.group();
+				int n = Integer.parseInt(axis.substring(2,5));
+				while (n > 0) {
+					response.append(axis.substring(0,1).toLowerCase());
+					n--;
+				}
+			}
+			response.append("\n$ ");
+			return response.toString();
 		}
 		return "$ ";
 	} else {
@@ -384,22 +583,27 @@ private String processCommand(String command) throws RuntimeException {
 			
 			if (response.indexOf("SERIAL RECEIVE ABORT") != -1) {
 				// its a serial abort
-				throw new MillingException(MillingException.SERIAL_ABORT);
+				throw new MillingException(response.toString(), MillingException.SERIAL_ABORT);
 			}
 			
 			if (response.indexOf("LIMIT ERROR") != -1) {
 				// its a limit switch error
-				throw new MillingException(MillingException.LIMIT_ERROR);
+				throw new MillingException(response.toString(), MillingException.LIMIT_ERROR);
 			}
 
+			if (response.indexOf("BROWNOUT RESET") != -1) {
+				// its a brownout reset error
+				throw new MillingException(response.toString(), MillingException.BROWNOUT_ERROR);
+			}
+			
 			if (response.indexOf("Invalid Command") != -1) {
-				// its an invalid command (whihc means a comm problem usually
-				throw new MillingException(MillingException.INVALID_COMMAND);
+				// its an invalid command (which means a comm problem usually
+				throw new MillingException(response.toString(), MillingException.INVALID_COMMAND);
 			}
 			
 			if (response.indexOf("Command not implemented yet") != -1) {
 				// its a unimplemented command - comm error or old firmware
-				throw new MillingException(MillingException.NOT_IMPLEMENTED);
+				throw new MillingException(response.toString(), MillingException.NOT_IMPLEMENTED);
 			}
 			return response.toString();
 		} catch (MillingException e) {
@@ -711,6 +915,19 @@ public Tool getCurrentTool() {
 
 public void setCurrentTool(Tool currentTool) {
 	this.currentTool = currentTool;
+}
+
+public void moveTo(MillLocation loc) {
+	moveTo(loc.getX(), loc.getY(), loc.getZ());
+	
+}
+
+public MillingProperties getProperties() {
+	return properties;
+}
+
+public int getZSafe() {
+	return properties.getZSafe();
 }
 
 

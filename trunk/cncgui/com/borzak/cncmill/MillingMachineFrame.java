@@ -21,6 +21,9 @@ import javax.swing.event.*;
 import javax.swing.text.*;
 
 import org.apache.commons.logging.*;
+import org.apache.log4j.*;
+import org.apache.log4j.lf5.*;
+import org.apache.log4j.lf5.viewer.*;
 
 
 public class MillingMachineFrame extends JFrame implements Runnable {
@@ -28,6 +31,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	
 	MillingMachine mill = new MillingMachine();
 	MillingMachineFrame frame = this;
+	MillingPropertiesDialog propDialog;
 	private JTextField xGotoTF;
 	private JTextField yGotoTF;
 	private JTextField zGotoTF;
@@ -45,7 +49,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	private VerticalLabel xMinLimit;
 	private VerticalLabel xMaxLimit;
 	private JButton startStopButton;
-	private Action startStopAction;
+	private StartStopAction startStopAction = new StartStopAction();
 	private JCheckBox drillCB;
 	private JCheckBox vacuumCB;
 	private JCheckBox xHoldCB;
@@ -68,7 +72,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	private JButton zMinusInchButton;
 	private JButton gotoButton;
 	private File defaultDirectory = new File(".");
-	private MillingActionList actionsList2 = new MillingActionList();
+	private MillingActionList actionsList2 = new MillingActionList(this);
 	private boolean running = false;
 
 	private boolean forceStop = false;
@@ -84,6 +88,8 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 	private Action isolateAction;
 
+	private Action millSegmentAction;
+	
 	private Action simplifyAction;
 
 	private Action traceAction;
@@ -132,6 +138,47 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 	private AbstractAction rasterizeAction;
 	
+	
+	private class StartStopAction extends AbstractAction {
+		
+		public final static String STATE_START = "Start";
+		public final static String STATE_STOP = "Stop";
+		public final static String STATE_RESUME = "Resume";
+		public final static String STATE_STEP = "Step";
+		
+		String state = STATE_START;
+		
+		public StartStopAction() {
+			putValue(Action.NAME,state);
+		}
+		
+		public void actionPerformed(ActionEvent evt) {
+			startStopAction();
+		}
+		
+		public void setState(String newState) {
+			state = newState;
+			putValue(Action.NAME,newState);
+		}
+		
+		public String getState() {
+			return state;
+		}
+		
+		public Color getColor() {
+			if (state.equals(STATE_START)) {
+				return Color.GREEN;
+			} else if (state.equals(STATE_STOP)) {
+				return Color.RED;
+			} else if (state.equals(STATE_STEP)) {
+				return Color.YELLOW;
+			} else if (state.equals(STATE_RESUME)) {
+				return Color.YELLOW;
+			}
+			return Color.GREEN;
+		}
+
+	};
 	
 	private class MoveOffsetAction implements ActionListener {
 		
@@ -223,10 +270,12 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 
 	public static void main(String[] args) {
-		MillingMachineFrame frame = new MillingMachineFrame();
+		MillingMachineFrame frame = null;
 		if ( (args.length > 0) && args[0].equals("-s")) {
-			frame.mill.SetSimulating(true);
+			frame = new MillingMachineFrame(true);
 //			frame.mill.setSimulateDelay(1000);
+		} else {
+			frame = new MillingMachineFrame(false);
 		}
 
 		frame.initialDisplay();
@@ -250,8 +299,25 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	}
 
 	public MillingMachineFrame() {
+		this(false);
+	}
+	
+	public MillingMachineFrame(boolean simulating) {
 		super();
 
+		mill.SetSimulating(simulating);
+		
+		propDialog = new MillingPropertiesDialog(mill.getProperties());
+
+		Logger rootLogger = Logger.getRootLogger();
+		LF5Appender lf5a = new LF5Appender();
+		rootLogger.addAppender(lf5a);
+		rootLogger.setLevel(Level.DEBUG);
+		
+		final LogBrokerMonitor monitor = lf5a.getLogBrokerMonitor();
+		monitor.setTitle("Milling Machine Log");
+		monitor.getBaseFrame().setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+		
 		setTitle("Milling Machine Controller");
 
 		Container content = getContentPane();
@@ -290,6 +356,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		millPanel.add(xMaxLimit, BorderLayout.EAST);
 
 		surface = new SurfacePanel();
+		surface.setProperties(mill.getProperties());
 
 		actionsList2.setSurface(surface);
 		surface.setActions(actionsList2);
@@ -388,15 +455,14 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		Box buttonBox = new Box(BoxLayout.Y_AXIS);
 		controlsPanel.add(buttonBox);
 
-		startStopAction = new AbstractAction("Start/Stop"){
-			public void actionPerformed(ActionEvent evt) {
-				startStopAction();
+		startStopButton = new JButton(startStopAction);
+		startStopButton.setBackground(startStopAction.getColor());
+		startStopAction.addPropertyChangeListener(new PropertyChangeListener() {
+			public void propertyChange(PropertyChangeEvent arg0) {
+				// handle state changes by updating button color
+				startStopButton.setBackground(startStopAction.getColor());
 			}
-		};
-		
-		startStopButton = new JButton("Start");
-		startStopButton.setBackground(Color.GREEN);
-		startStopButton.addActionListener(startStopAction);
+		});
 		buttonBox.add(startStopButton);
 
 		drillCB = new JCheckBox("Drill");
@@ -425,33 +491,79 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		positionPanel.add(new JLabel("Z"));
 
 		positionPanel.add(new JLabel("Calibrate:"));
-		JButton calibrateX = new JButton("Zero");
+		
+		final boolean calibrateToValue = mill.getFirmwareVersionAsFloat() >= 1.1;
+		String calibrateText = calibrateToValue ? "Set" : "Zero"; 
+		
+		JButton calibrateX = new JButton(calibrateText);
 		calibrateX.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				
+				int pos = 0;
+				try {
+					if (calibrateToValue) {
+						pos = Integer.parseInt(xGotoTF.getText());
+					}
+				} catch (NumberFormatException e) {
+					log.error("in MillingMachineFrame.MillingMachineFrame", e);
+					}
+				
 				if (JOptionPane
-						.showConfirmDialog(null, "Clear X Axis to Zero?") == JOptionPane.YES_OPTION) {
-					mill.calibrateX();
+						.showConfirmDialog(null, "Set X Axis to "+pos+"?") == JOptionPane.YES_OPTION) {
+					mill.calibrateX(pos);
+					String saveY = yGotoTF.getText();
+					String saveZ = zGotoTF.getText();
 					refreshFromMill();
+					yGotoTF.setText(saveY);
+					zGotoTF.setText(saveZ);
 				}
 			}
 		});
-		JButton calibrateY = new JButton("Zero");
+		JButton calibrateY = new JButton(calibrateText);
 		calibrateY.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+
+				int pos = 0;
+				try {
+					if (calibrateToValue) {
+						pos = Integer.parseInt(yGotoTF.getText());
+					}
+				} catch (NumberFormatException e) {
+					log.error("in MillingMachineFrame.MillingMachineFrame", e);
+					}
+				
 				if (JOptionPane
-						.showConfirmDialog(null, "Clear Y Axis to Zero?") == JOptionPane.YES_OPTION) {
-					mill.calibrateY();
+						.showConfirmDialog(null, "Set Y Axis to "+pos+"?") == JOptionPane.YES_OPTION) {
+					mill.calibrateY(pos);
+					String saveX = xGotoTF.getText();
+					String saveZ = zGotoTF.getText();
 					refreshFromMill();
+					xGotoTF.setText(saveX);
+					zGotoTF.setText(saveZ);
 				}
+				
 			}
 		});
-		JButton calibrateZ = new JButton("Zero");
+		JButton calibrateZ = new JButton(calibrateText);
 		calibrateZ.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				int pos = 0;
+				try {
+					if (calibrateToValue) {
+						pos = Integer.parseInt(zGotoTF.getText());
+					}
+				} catch (NumberFormatException e) {
+					log.error("in MillingMachineFrame.MillingMachineFrame", e);
+					}
+				
 				if (JOptionPane
-						.showConfirmDialog(null, "Clear Z Axis to Zero?") == JOptionPane.YES_OPTION) {
-					mill.calibrateZ();
+						.showConfirmDialog(null, "Set Z Axis to "+pos+"?") == JOptionPane.YES_OPTION) {
+					mill.calibrateZ(pos);
+					String saveX = xGotoTF.getText();
+					String saveZ = zGotoTF.getText();
 					refreshFromMill();
+					xGotoTF.setText(saveX);
+					zGotoTF.setText(saveZ);
 				}
 			}
 		});
@@ -660,11 +772,9 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			public void stateChanged(ChangeEvent evt) {
 				stepMode = runStep.isSelected();
 				if (stepMode) {
-					startStopButton.setBackground(Color.YELLOW);
-					startStopButton.setText("Step");
+					startStopAction.setState(StartStopAction.STATE_STEP);
 				} else {
-					startStopButton.setBackground(Color.GREEN);
-					startStopButton.setText("Start");
+					startStopAction.setState(StartStopAction.STATE_START);
 				}
 			}
 
@@ -675,101 +785,18 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 			public void actionPerformed(ActionEvent evt) {
 				actionsList2.undo();
-				undoAction.setEnabled(actionsList2.isUndoable());
 			}
 
 		};
 		
-		optimizeAction = new AbstractAction("Optimize Mill Paths") {
-					private static final long serialVersionUID = 1L;
-		
-					public void actionPerformed(ActionEvent evt) {
-						Thread t = new Thread(){
-							public void run() {
-								actionsList2.optimizeMillPaths(statusBar);
-								undoAction.setEnabled(actionsList2.isUndoable());
-							}
-						};
-						t.start();
-					};
-					
-		
-				};
-		traceAction = new AbstractAction("Calculate Traces") {
-			private static final long serialVersionUID = 1L;
+		optimizeAction = new OptimizeMillPathCommand(actionsList2,statusBar,0,0);
+		traceAction = new CalculateTraceCommand(actionsList2,statusBar);
+		simplifyAction = new SimplifyTracesCommand(actionsList2,statusBar);
+		isolateAction = new IsolateTraceCommand(actionsList2,statusBar); 
 
-			public void actionPerformed(ActionEvent evt) {
-				Thread t = new Thread(){
-					public void run() {
-						actionsList2.calculateTraces(statusBar);
-						undoAction.setEnabled(actionsList2.isUndoable());
-					}
-				};
-				t.start();
-			}
-
-		};
-		simplifyAction = new AbstractAction("Simplify Traces") {
-
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent evt) {
-
-				String distance = JOptionPane.showInputDialog(null,
-						"Optimize Distance", "1.0");
-				double ddistance = Double.parseDouble(distance);
-				actionsList2.simplifyTraces(ddistance);
-				undoAction.setEnabled(actionsList2.isUndoable());
-			}
-
-		};
-		isolateAction = new AbstractAction("Isolate Traces") {
-
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent evt) {
-
-				String distance = JOptionPane.showInputDialog(null,
-						"Tool Size (inches)", "0.010");
-				double ddistance = Double.parseDouble(distance);
-				int idistance = (int) (ddistance * 240.0D);
-				actionsList2.isolateTraces(idistance);
-				undoAction.setEnabled(actionsList2.isUndoable());
-			}
-		};
-		rasterizeAction = new AbstractAction("Rasterize Interior") {
-
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent evt) {
-
-				final Tool tool = showToolSelection("Select Milling Tool");
-
-				Thread t = new Thread(){
-					public void run() {
-						actionsList2.rasterizeInterior(statusBar, tool,2);
-						undoAction.setEnabled(actionsList2.isUndoable());
-					}
-				};
-				t.start();
-				
-				
-			}
-		};
-		fattenAction = new AbstractAction("Fatten Traces") {
-
-			private static final long serialVersionUID = 1L;
-
-			public void actionPerformed(ActionEvent evt) {
-
-				String distance = JOptionPane.showInputDialog(null,
-						"Increase Trace Size by (inches)", "" + 1.0D / 240.0D);
-				double ddistance = Double.parseDouble(distance);
-				ddistance = ddistance * 240.0D;
-				actionsList2.fattenTraces(ddistance);
-				undoAction.setEnabled(actionsList2.isUndoable());
-			}
-		};
+		millSegmentAction = new MillSegmentsCommand(actionsList2,statusBar);
+		rasterizeAction = new RasterizeInteriorCommand(actionsList2, statusBar);
+		fattenAction = new FattenTracesCommand(actionsList2,statusBar);
 		deleteAction = new AbstractAction("Delete Selected") {
 
 			private static final long serialVersionUID = 1L;
@@ -778,7 +805,6 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 				if (JOptionPane.showConfirmDialog(null,
 						"Delete "+actionsList2.getSelectedCount()+" actions?") == JOptionPane.YES_OPTION) {
 					actionsList2.deleteSelected();
-					undoAction.setEnabled(actionsList2.isUndoable());
 				}
 
 			}
@@ -890,16 +916,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		moveAction.setEnabled(false);
 		
 // Edit - Mirror (left-right)		
-		Action mirrorAction = new AbstractAction("Mirror X Axis"){
-
-			private static final long serialVersionUID = 1L;
-			
-			public void actionPerformed(ActionEvent arg0) {
-				actionsList2.mirrorActions();
-				undoAction.setEnabled(actionsList2.isUndoable());
-			}
-		};
-		moveAction.setEnabled(false);
+		Action mirrorAction = new MirrorCommand(actionsList2,statusBar);
 		
 // Edit - Properties
 		Action propertiesAction = new AbstractAction("Properties"){
@@ -913,6 +930,43 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		};
 		propertiesAction.setEnabled(false);
 		
+// File - About... action
+		Action aboutAction = new AbstractAction("About..."){
+		
+			private static final long serialVersionUID = 1L;
+
+			public void actionPerformed(ActionEvent evt) {
+				String s = "GUI Version: 1.1\n";
+				s = s+"Firmware Version: "+mill.getFirmwareVersion();
+				JOptionPane.showMessageDialog(null,s,"About Vince's Milling Machine GUI",JOptionPane.PLAIN_MESSAGE);
+			}
+		
+		};
+
+//		 File - Refresh - Refresh from Mill action
+		Action refreshAction = new AbstractAction("Refresh Mill Location..."){
+		
+			private static final long serialVersionUID = 1L;
+
+			public void actionPerformed(ActionEvent evt) {
+				refreshFromMill();
+			}
+		
+		};
+		
+		
+//		 View - Logs...
+		Action viewLogAction = new AbstractAction("Logs..."){
+		
+			private static final long serialVersionUID = 1L;
+
+			public void actionPerformed(ActionEvent evt) {
+				monitor.show();
+			}
+		
+		};
+		
+		
 				
 		// Create the main menu bar
 		JMenuBar menuBar = new JMenuBar();
@@ -922,21 +976,31 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		JMenu fileMenu = new JMenu("File");
 		menuBar.add(fileMenu);
 		fileMenu.add(new JMenuItem(loadAction));
+		fileMenu.add(new JMenuItem(refreshAction));
+		fileMenu.add(new JMenuItem(aboutAction));
+		fileMenu.addSeparator();
+		fileMenu.add(new JMenuItem(new AbstractAction("Properties"){
+			public void actionPerformed(ActionEvent evt) {
+				propDialog.setVisible(true);
+			}
+		}));
+		fileMenu.addSeparator();
 		fileMenu.add(new JMenuItem(fileExitAction));
-
 		// Edit Menu
 		JMenu editMenu = new JMenu("Edit");
 		menuBar.add(editMenu);
 		editMenu.add(new JMenuItem(undoAction));
 		editMenu.add(new JMenuItem(traceAction));
-		editMenu.add(new JMenuItem(simplifyAction));
-		editMenu.add(new JMenuItem(fattenAction));
+		editMenu.add(new JMenuItem(mirrorAction));
 		editMenu.add(new JMenuItem(isolateAction));
 		editMenu.add(new JMenuItem(optimizeAction));
+		editMenu.addSeparator();
+		editMenu.add(new JMenuItem(millSegmentAction));
 		editMenu.add(new JMenuItem(rasterizeAction));
-		editMenu.add(new JMenuItem(deleteAction));
-		editMenu.add(new JMenuItem(mirrorAction));
+		editMenu.add(new JMenuItem(simplifyAction));
+		editMenu.add(new JMenuItem(fattenAction));
 		editMenu.add(new JMenuItem(moveAction));
+		editMenu.add(new JMenuItem(deleteAction));
 		editMenu.add(new JMenuItem(propertiesAction));
 		
 		JMenu selectMenu = new JMenu("Select");
@@ -977,6 +1041,8 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			}
 		});
 		showManual.setSelected(true); // initially selected
+		viewMenu.addSeparator();
+		viewMenu.add(new JMenuItem(viewLogAction));
 				
 		// Run Menu
 		JMenu runMenu = new JMenu("Run");
@@ -991,20 +1057,20 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		
 		popup = new JPopupMenu("Actions");
 		popup.add(new JMenuItem(selectAll));
+		popup.add(new JMenuItem(deleteAction));
+		popup.add(new JMenuItem(undoAction));
 		popup.addSeparator();
 		popup.add(new JMenuItem(traceAction));
-		popup.add(new JMenuItem(simplifyAction));
-		popup.add(new JMenuItem(fattenAction));
-		popup.add(new JMenuItem(isolateAction));
-		popup.add(new JMenuItem(deleteAction));
 		popup.add(new JMenuItem(mirrorAction));
-		popup.add(new JMenuItem(moveAction));
-		popup.add(new JMenuItem(propertiesAction));
+		popup.add(new JMenuItem(isolateAction));
+		popup.add(new JMenuItem(optimizeAction));
 		popup.addSeparator();
 		popup.add(new JMenuItem(unZoom));
 		popup.add(new JMenuItem(zoomIn));
 		popup.add(new JMenuItem(zoomOut));
 		popup.add(new JMenuItem(showAll));
+		popup.addSeparator();
+		popup.add(new JMenuItem(startStopAction));
 		
 		surface.add(popup);
 		
@@ -1038,6 +1104,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			}
 
 		});
+		monitor.hide();
 
 	}
 
@@ -1125,16 +1192,14 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			
 			forceStop = false;
 			running = true;
+			long runTimer = System.currentTimeMillis() + (mill.getProperties().getMaxCutTimeSecs()*1000);
+
 			
 			if (!stepMode) {
-				startStopButton.setBackground(Color.RED);
-				startStopButton.setText("Stop");
+				startStopAction.setState(StartStopAction.STATE_STOP);
 			} else {
-				startStopButton.setEnabled(false);
+				startStopAction.setEnabled(false);
 			}
-			
-			long runTimer = System.currentTimeMillis() + (5*60*1000);
-			//TODO cooldown should be an option, as should the cut and cool down timeouts
 			
 			while (!actionsList2.isAtEndOfList()) {
 
@@ -1145,30 +1210,39 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 				}
 				
 				
-				if (System.currentTimeMillis() > runTimer) {
+				if (!stepMode && mill.getProperties().isCoolDown() && System.currentTimeMillis() > runTimer) {
 					// Take a break 
 					// first save the state of the vacuum and drill motors
 					boolean vacstate = mill.isVacuumRelay();
 					boolean drillstate = mill.isDrillRelay();
-					mill.moveOffset(0,0,-10); // lift the z-axis up 10 steps
+					mill.readStatus();
+					MillLocation currentLoc = mill.getLocation();
+					mill.moveTo(-9999,-9999,mill.getProperties().getZSafe());
 					mill.setDrillRelay(false); // turn the drill off
 					mill.setVacuumRelay(false); // turn the vacuum off
-					statusBar.setMessage("Motor Cool down break");
-					
+					startStopAction.setState(StartStopAction.STATE_RESUME);
+										
 					try {
-						Thread.sleep(5*60*1000); // sleep for 5 minutes
-					} catch (InterruptedException e) {
+						long restTimer = System.currentTimeMillis() + (mill.getProperties().getCoolDownSecs()*1000);
+						do {
+							statusBar.setMessage("Cooling down - "+(restTimer - System.currentTimeMillis())/1000L+" seconds");
+							Thread.sleep(1000); // wait for 1 second
+						} while (!forceStop && System.currentTimeMillis() < restTimer);
+						} catch (InterruptedException e) {
 						log.error("Motor cool down delay interrupted", e);
 					} 
+
+					forceStop = false;
+					startStopAction.setState(StartStopAction.STATE_STOP);
 					
 					statusBar.setMessage("Processing actions...");
 					// return everything back to where it was
 					mill.setVacuumRelay(vacstate);
 					mill.setDrillRelay(drillstate);
-					mill.moveOffset(0,0,10); // put the z-axis back where it was
+					mill.moveTo(currentLoc); // put the z-axis back where it was
 					
 					// set the next cool down interval
-					runTimer = System.currentTimeMillis() + (5*60*1000);
+					runTimer = System.currentTimeMillis() + (mill.getProperties().getMaxCutTimeSecs()*1000);
 				}
 				
 				actionsList2.processNextAction(mill);
@@ -1187,15 +1261,15 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			mill.setDrillRelay(false);
 			mill.setVacuumRelay(false);
 			running = false;
-			refreshFromMill();
-			if (mill.getZLocation() >= -10) {
-				mill.moveTo(-9999,-9999,-10); // raise the bit (unless it is already up)
+			mill.readStatus();
+			if (mill.getZLocation() >= mill.getZSafe()) {
+				mill.moveTo(-9999,-9999,mill.getZSafe()); // raise the bit (unless it is already up)
 			}
+			refreshFromMill();
 			
-			startStopButton.setEnabled(true);
+			startStopAction.setEnabled(true);
 			if (!stepMode || actionsList2.isAtEndOfList()) {
-				startStopButton.setBackground(Color.GREEN);
-				startStopButton.setText("Start");
+				startStopAction.setState(StartStopAction.STATE_START);
 			}
 			
 			if (actionsList2.isAtEndOfList()) {
@@ -1208,6 +1282,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	}
 	
 	public void stopMilling() {
+		// Note that when in a cool down delay, forceStop really means continue milling.
 		forceStop = true;
 	}
 	
@@ -1260,16 +1335,11 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			case JobProperties.RS274X_FORMAT:
 				count = loadGerberFile(selected, props);
 				break;
-				
-			default:
-				count = loadCustomFile(selected, props);
-				break;
 			}
 			
 			log.info("Loaded "+count+" actions");
 			actionsList2.drawAll();
-			startStopButton.setEnabled(true);
-			startStopButton.setVisible(true);
+			startStopAction.setEnabled(true);
 		} catch (Exception e) {
 			log.error("in MillingMachineFrame.loadFile", e);
 			showExceptionDialog(e);
@@ -1277,123 +1347,10 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		
 	}
 	
-
-	private int loadCustomFile(File selected, JobProperties props) throws IOException {
-	FileReader fr = null;
-	BufferedReader br = null;
-	int depth = props.getDepth();
-	int diameter = props.getDiameter();
-	int count = 0;
-	MillingAction action = null;
-
-	try {
-		fr = new FileReader(selected);
-		br = new BufferedReader(fr);
-		
-		String line = null;
-		Pattern drillcsv1 = Pattern.compile("([-]?[0-9]+),([-]?[0-9]+)");               //xxx,yyy
-		Pattern drillcsv2 = Pattern.compile("D([-]?[0-9]+),([-]?[0-9]+),([-]?[0-9]+)"); //Dxxx,yyy,ddd
-		Pattern movecsv = Pattern.compile("M([-]?[0-9]+),([-]?[0-9]+)");                //Mxxx,yyy
-		Pattern routecsv = Pattern.compile("R([-]?[0-9]+),([-]?[0-9]+),([-]?[0-9]+)");  //Rxxx,yyy,ddd
-		
-		int lastx=-9999;
-		int lasty=-9999;
-		
-		while ((line=br.readLine()) != null) {
-			Matcher m = drillcsv1.matcher(line);
-			Matcher m2 = drillcsv2.matcher(line);
-			if (m.matches() || m2.matches()) {
-				int xpos = 0;
-				int ypos = 0;
-				if (m.matches()) {
-					xpos = Integer.parseInt(m.group(1));
-					ypos =Integer.parseInt(m.group(2));
-				}
-				if (m2.matches()) {
-					xpos = Integer.parseInt(m2.group(1));
-					ypos =Integer.parseInt(m2.group(2));
-					depth = Integer.parseInt(m2.group(3));
-				}
-				lastx = xpos;
-				lasty = ypos;
-				actionsList2.add(action = new DrilledHole(xpos, ypos, depth, diameter));
-				action.setDisplayOnly(props.isDisplayOnly());
-				count++;
-				log.info("Loaded a drilled hole at "+xpos+","+ypos+" depth = "+depth);
-				continue;
-			}
-			m = movecsv.matcher(line);
-			if (m.matches()) {
-				int xpos = 0;
-				int ypos = 0;
-				xpos = Integer.parseInt(m.group(1));
-				ypos =Integer.parseInt(m.group(2));
-				if ( (xpos == lastx) && (ypos == lasty) ) {
-					log.info("Skipping duplicate move instruction to current position");
-				} else {
-					actionsList2.add(action = new MilledMovement(xpos, ypos));
-					action.setDisplayOnly(props.isDisplayOnly());
-					lastx = xpos;
-					lasty = ypos;
-					log.info("Loaded a rapid movement to "+xpos+","+ypos);
-				}
-				continue;
-			}
-			m = routecsv.matcher(line);
-			if (m.matches()) {
-				int xpos = 0;
-				int ypos = 0;
-				xpos = Integer.parseInt(m.group(1));
-				ypos =Integer.parseInt(m.group(2));
-				depth = Integer.parseInt(m.group(3));
-
-				// skip short segments less than tool radius
-				if ( props.isSkipShort() && (Math.abs(lastx-xpos) < diameter/2) && (Math.abs(lasty-ypos) < diameter/2)) {
-					log.info("Skipping short segment");
-					continue;
-				}
-				
-				if (lastx != -9999) {
-					actionsList2.add(action = new MilledLine(lastx, lasty, xpos, ypos, depth, diameter));
-					action.setDisplayOnly(props.isDisplayOnly());
-					log.info("Loaded a routed line from "+lastx+","+lasty+ " to "+xpos+","+ypos+" at depth "+depth);
-					count++;
-				}
-				lastx = xpos;
-				lasty = ypos;
-				continue;
-			}
-			
-			log.info("bypassing: "+line);
-		}
-		return count;
-	} catch (IOException e) {
-		throw e;
-	} finally {
-		try {
-			if (br != null) {
-				br.close();
-			}
-		} catch (IOException e) {
-			log.error("Error closing br", e);
-		}
-		try {
-			if (fr != null) {
-				fr.close();
-			}
-		} catch (IOException e) {
-			log.error("Error closing fr", e);
-		}
-		
-	}
-}	
-	
-	
 	private int loadGerberFile(File selected, JobProperties props) throws IOException {
 		// This one loads a RS274X Gerber file without messing with traces
 		FileReader fr = null;
 		BufferedReader br = null;
-		int depth = props.getDepth();
 		int diameter = props.getDiameter();
 		int count = 0;
 		double factor = 240.0D; // 240 steps per inch
@@ -1680,7 +1637,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		FileReader fr = null;
 		BufferedReader br = null;
 		int depth = props.getDepth();
-		int diameter = props.getDiameter();
+//		int diameter = props.getDiameter();
 		int count = 0;
 		double factor = 240.0D; // 240 steps per inch
 		HashMap tools = new HashMap();
@@ -1792,7 +1749,7 @@ M30
 					actionsList2.add(action = new DrilledHole(xpos, ypos, depth, newTool));
 					action.setDisplayOnly(props.isDisplayOnly());
 					count++;
-					log.info("Loaded a drilled hole at "+xpos+","+ypos+" depth = "+depth+" with diameter "+diameter);
+					log.info("Loaded a drilled hole at "+xpos+","+ypos+" depth = "+depth+" with tool "+newTool);
 					continue;
 				}
 				log.info("bypassing: "+line);
@@ -1820,8 +1777,11 @@ M30
 	}	
 	
 	
-	
 	public Tool showToolSelection(String desc) {
+		return showToolSelection(desc, null);
+	}
+	
+	public Tool showToolSelection(String desc, JPanel extraPanel) {
 
 		Tool selection = null;
 		
@@ -1829,10 +1789,25 @@ M30
 			selectDialog = new ToolSelectionDialog(this);
 		}
 		
+		
+		if (extraPanel != null) {
+			selectDialog.getExtraPanel().add(extraPanel);
+			selectDialog.pack();
+		}
+		
 		while (selection == null) {
 			selectDialog.setDescription(desc);
 			selectDialog.setVisible(true);
 			selection = selectDialog.getSelectedTool();
+			
+			if (selectDialog.getResult() != ToolSelectionDialog.RESULT_CONTINUE) {
+				throw new RuntimeException("Tool Selection CANCELLED!");
+			}
+		}
+		
+		if (extraPanel != null) {
+			selectDialog.getExtraPanel().remove(extraPanel);
+			selectDialog.pack();
 		}
 		
 		return selection;
@@ -1843,13 +1818,17 @@ M30
 		int xoffset = props.getX() /* -1200 for big board */;
 		int yoffset = props.getY() /* -900 for big board */;
 		int depth = props.getDepth();
-		int diameter = props.getDiameter();
 		MillingAction action = null;
 		
 		FileReader fr = null;
 		BufferedReader br = null;
 		int count = 0;
 
+		
+		Tool tool = showToolSelection("Default tool for RML file");
+		int diameter = tool.getStepDiameter();
+		
+		
 		try {
 			fr = new FileReader(selected);
 			br = new BufferedReader(fr);
@@ -1896,7 +1875,7 @@ M30
 							log.info("Skipping duplicate route instruction to current position");
 						} else {
 							if (lastx != -9999) {
-								action = new MilledLine(lastx, lasty, xpos, ypos, depth, diameter);
+								action = new MilledLine(lastx, lasty, xpos, ypos, depth, tool);
 								action.setDisplayOnly(props.isDisplayOnly());
 								actionsList2.add(action); 
 								log.info("Loaded a routed line from "+lastx+","+lasty+ " to "+xpos+","+ypos+" at depth "+depth);

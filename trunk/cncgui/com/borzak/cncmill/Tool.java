@@ -13,6 +13,7 @@ public class Tool implements Serializable {
 	public static final int ENDMILL = 0;
 	public static final int DRILL = 1;
 	int type = ENDMILL;
+	int maxDepth = 0;
 	String description = null;
 	
 	public Tool() {
@@ -104,5 +105,13 @@ public class Tool implements Serializable {
 
 	public void setType(int type) {
 		this.type = type;
+	}
+
+	public int getMaxDepth() {
+		return maxDepth;
+	}
+
+	public void setMaxDepth(int maxDepth) {
+		this.maxDepth = maxDepth;
 	}
 }
