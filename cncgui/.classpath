@@ -9,5 +9,6 @@
 	<classpathentry kind="lib" path="/Workspace Extensions/JTS_Test.jar"/>
 	<classpathentry kind="lib" path="/Workspace Extensions/jts-1.8.jar"/>
 	<classpathentry kind="lib" path="/Workspace Extensions/jtsio-1.8.jar"/>
+	<classpathentry kind="lib" path="/Workspace Extensions/log4j-1.2.15.jar"/>
 	<classpathentry kind="output" path=""/>
 </classpath>
