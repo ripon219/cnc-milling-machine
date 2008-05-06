@@ -9,10 +9,15 @@
 
 		radix dec
 
-  		__CONFIG _CP_OFF & _XT_OSC & _PWRTE_ON  & _WDT_OFF & _BODEN_OFF & _LVP_ON & _DEBUG_OFF & _WRT_ENABLE_ON & _CPD_OFF
+  		__CONFIG _CP_OFF & _XT_OSC & _PWRTE_ON  & _WDT_OFF & _BODEN_ON & _LVP_ON & _DEBUG_OFF & _WRT_ENABLE_ON & _CPD_OFF
 
 ;;;;;;;;;#DEFINE	Debug 1
 
+; Version 1.1
+;  - Send x,y,z to serial port for each step on moves
+;  - Detect and report Brownout resets
+;  - Allow calibration to a specific location
+;  - Add an 'F' command to display firmware version
 ; Version 1.0 - Changes to match hardware pin swaps - Swap X/Y Axis.  Swap A with \A, B with \B
 ; Version 0.4 - Changes out X/Y step routines with a modified Bresenham algorithm that moves in straight lines
 
@@ -92,7 +97,7 @@ MacroSendTable	macro	tableLocation
 
 ; Define EEPROM locations
 	org 0x2100
-			de "Vinces CNC Mill V1.0 - Vincent Greene", 0
+			de "Vinces CNC Mill V1.1 - Vincent Greene", 0
 
 
 pwrUpCfg
@@ -661,6 +666,95 @@ drive_end
 		return
 
 
+; Thanks to Peter Hemsley for the following code - it would take me forever to
+;  create anything that would do it, and it would not have been efficient
+; My revisons just replace D0 to D4 and NUMHI and NUMLO with my existing variables
+;  digits (0-4) and HI / LO with the following defines:
+
+#define NUMLO LO
+#define NUMHI HI
+#define D4 digits+0
+#define D3 digits+1
+#define D2 digits+2
+#define D1 digits+3
+#define D0 digits+4
+
+; digits are in this order: d4,d3,d2,d1,d0
+
+; 5 digit decimal to 16 (17) bit binary. By Peter Hemsley, March 2003.
+; Input decimal digits in D0 (LSD) to D4 (MSD)
+; Output 16 bit binary in NUMHI and NUMLO
+; No temporary variables required
+; Code size: 33 instructions
+; Execution time: 33 cycles (excluding Call and Return)
+; Returns carry set if > 65535 (and NUMHI-LO MOD 65536)
+
+dec2bin16
+    movf  D1,W        ; (D1 + D3) * 2
+    addwf D3,W
+    movwf NUMLO
+    rlf   NUMLO,F
+
+    swapf D2,W        ; + D2 * 16 + D2
+    addwf D2,W
+    addwf LO,F
+
+    rlf   D4,W        ; + (D4 * 2 + D3) * 256
+    addwf D3,W
+    movwf NUMHI
+
+    rlf   NUMLO,F     ; * 2
+    rlf   NUMHI,F
+
+    swapf D3,W        ; - D3 * 16
+    subwf LO,F
+    skpc
+    decf  NUMHI,F
+
+    swapf D2,W        ; + D2 * 16 + D1
+    addwf D1,W
+    addwf NUMLO,F
+    skpnc
+    incf  NUMHI,F
+
+    swapf D4,W        ; + D4 * 16 + D0
+    addwf D0,W
+
+    rlf   NUMLO,F     ; * 2
+    rlf   NUMHI,F
+
+    addwf NUMLO,F
+    skpnc
+    incf  NUMHI,F
+
+    movf  D4,W        ; - D4 * 256
+    subwf NUMHI,F
+
+    swapf D4,W        ; + D4 * 16 * 256 * 2
+    addwf NUMHI,F
+    addwf NUMHI,F
+
+    return            ; Q.E.D.
+
+
+; digits are in this order: d4,d3,d2,d1,d0
+
+; 5 ASCII digits to 16 (17) bit binary. Calls dec2bin16
+;  to do the hard work.
+; Input ASCII digits in D0 (LSD) to D4 (MSD)
+; Output 16 bit binary in NUMHI and NUMLO
+; Returns carry set if > 65535 (and NUMHI-LO MOD 65536)
+
+digit2bin16
+		movlw		0xD0		;constant for -30 in hex
+		addwf		digits+0,f
+		addwf		digits+1,f
+		addwf		digits+2,f
+		addwf		digits+3,f
+		addwf		digits+4,f
+		goto		dec2bin16
+		
+
 
 ;**********************************************************************
 ; Mainline - start of command processing
@@ -734,6 +828,11 @@ cmdnext
 		  btfsc		STATUS,Z
 		  goto		help_cmd
 
+		  movlw		'F'
+		  subwf		rcvbuffer,w
+		  btfsc		STATUS,Z
+		  goto		version_cmd
+
 ; this is where we end up if the command is not in the table
 bad_cmd
           
@@ -752,6 +851,10 @@ badcmd_table
 
 
 ; Command implementations go here
+
+version_cmd
+		; report the version of the firmware (the end of startup actually)
+		lgoto		greet
 
 holdcurrent_cmd
 	; Evaluate common third character (on/off) first
@@ -855,6 +958,8 @@ vacuum_cmd
 
 calibrate_cmd
 		; figure out which axis
+		;                  0123456789
+		; Modify this to:  Cx=+nnnnn<cr> = Calibrate axis x (reset to 0 or specified value)
 
 		movlw		'X'
 		subwf		rcvbuffer+1,w
@@ -873,9 +978,95 @@ calibrate_cmd
 		movf		offset,w
 		addwf		FSR,f
 
-		clrf		INDF
+		; Okay - so now the location to update is in the FSR
+		;  next step is to put the correct offset in the INDF and INDF+1
+
+		; Start with HI and LO cleared to zero, just in case
+		clrf		LO
+		clrf		HI
+
+		; Did we get a specific value to set? !@#
+
+		movf		rcvbuffer+2,w
+		sublw		'='
+		btfss		STATUS,Z
+		goto		loadAxisLocation
+
+		;set a sign
+
+		; sign is going to contain a 1 for negative, 0 for positive
+		clrf		sign
+
+		movf		rcvbuffer+3,w
+		sublw		'-'
+		btfss		STATUS,Z
+		goto		calbCheckPlus
+
+		bsf			sign,0
+		goto 		calbLoadDigits
+
+calbCheckPlus
+		movf		rcvbuffer+3,w
+		sublw		'+'
+		btfsc		STATUS,Z
+		goto		calbLoadDigits
+
+		; Load the digits starting from rcvbuffer+3 (no sign)
+		movf		rcvbuffer+3,w
+		movwf		digits+0
+
+		movf		rcvbuffer+4,w
+		movwf		digits+1
+
+		movf		rcvbuffer+5,w
+		movwf		digits+2
+
+		movf		rcvbuffer+6,w
+		movwf		digits+3
+
+		movf		rcvbuffer+7,w
+		movwf		digits+4
+		goto		calbdigits
+
+		; Now load the digits from rcvbuffer+4 (there was a sign)
+calbLoadDigits
+
+		movf		rcvbuffer+4,w
+		movwf		digits+0
+
+		movf		rcvbuffer+5,w
+		movwf		digits+1
+
+		movf		rcvbuffer+6,w
+		movwf		digits+2
+
+		movf		rcvbuffer+7,w
+		movwf		digits+3
+
+		movf		rcvbuffer+8,w
+		movwf		digits+4
+		
+calbdigits
+
+		lcall		digit2bin16
+
+		; now negate it if the sign is negative
+		btfss		sign,0
+		goto		loadAxisLocation
+
+        comf		LO,f	;Complement all bytes
+        comf		HI,f
+
+        incf		LO,f	;Inc. low byte always
+        skpnz				;Skip if no carry to higher bytes
+        incf		HI,f	;Carry to next byte
+
+loadAxisLocation
+		movf		HI,w
+		movwf		INDF
 		incf		FSR,f
-		clrf		INDF
+		movf		LO,w
+		movwf		INDF
 		
 		goto 		ready
 
@@ -1533,7 +1724,7 @@ yisfast	; initialize for y as the fast axis
 
 
 initErrorFactor	
-		clrf	errorFactor+1 	; high byte  //TODO remove this???
+		clrf	errorFactor+1 	; high byte  
 		movf	eslow,w
 		movwf	errorFactor
 		bcf		STATUS,C
@@ -1611,6 +1802,13 @@ processSteps
 		decf		xstepstogo,f
 		bsf			whichMotors,0
 
+		; Send an 'x' on the serial port (unless manual mode)
+		btfsc		manualMode,0
+		goto		nosendx
+		movlw		'x'
+		lcall		serout
+nosendx
+
 		; update the location
 
 		btfsc		xdirection,0
@@ -1627,7 +1825,6 @@ decrx
 		subwf		xlocation+1,f
 		btfss		STATUS,C
 		decf		xlocation+0,f
-
 
 calcx
 		; calculate the values for the motor coils
@@ -1652,6 +1849,13 @@ calcYaxis
 		decf		ystepstogo,f
 		bsf			whichMotors,0
 
+		; Send an 'y' on the serial port (unless manual mode)
+		btfsc		manualMode,0
+		goto		nosendy
+		movlw		'y'
+		lcall		serout
+nosendy
+
 		; update the location
 
 		btfsc		ydirection,0
@@ -1668,7 +1872,6 @@ decry
 		subwf		ylocation+1,f
 		btfss		STATUS,C
 		decf		ylocation+0,f
-
 
 calcy
 		; calculate the values for the motor coils
@@ -1693,6 +1896,13 @@ calcZaxis
 		; process Z axis - it has steps to go
 		decf		zstepstogo,f
 		bsf			whichMotors,2
+
+		; Send a 'z' on the serial port (unless manual mode)
+		btfsc		manualMode,0
+		goto		nosendz
+		movlw		'z'
+		lcall		serout
+nosendz
 
 		; update the location
 
@@ -1747,6 +1957,7 @@ doMotors
 
 		movf		zcoils,w
 		movwf		PORTA
+
 
 xyMotors
 
@@ -1954,7 +2165,7 @@ help_table
 		dt			"Commands:",CR,LF
 		dt			" MN<cr> = Manual Control",CR,LF
 		dt			" Mx+nnn[y+mmm]<cr> = Move axis x +/- nnn steps",CR,LF
-		dt			" Cx<cr> = Calibrate axis x (reset to 0)",CR,LF
+		dt			" Cx[=+nnnnn]<cr> = Calibrate axis x (reset to 0 or specified value)",CR,LF
 		dt			" SDx+nnn<cr> = Set Delay for axis x +/-/= nnn delay",CR,LF
 		dt			" SIx=nnn<cr> = Set Inch size on axis x to nnn steps",CR,LF
 		dt			" L<cr> = Lists current settings and location",CR,LF
@@ -1962,6 +2173,7 @@ help_table
 		dt			" D0<cr> = Drill Off (0) or On (1)",CR,LF
 		dt			" V0<cr> = Vacuum Off (0) or On (1)",CR,LF
 		dt			" B<cr> = Backup startup config",CR,LF
+		dt			" F = Firmware Version",CR,LF
 		dt 			" ?<cr> = Dump this message",CR,LF
 		retlw		0
 
@@ -1971,6 +2183,7 @@ help_table
 ; Note that this is at the end because page 0 is the best place for subroutines
 init
 		clrf		known_zero ; this MUST be zero 
+
 
 ; Initialize Bank 1 registers 
 
@@ -2082,12 +2295,37 @@ eepromread
 
 greet     
 		MacroSendTable	greet_table
+
+		; if it is a brown-out reset, report that as an error so the user-software can detect it.
+
+		BANKSEL		PCON
+
+		btfss		PCON,NOT_POR
+		goto		normalStart
+
+		btfsc		PCON,NOT_BOR
+		goto		normalStart
+
+		BANKSEL		H'20'
+		MacroSendTable	BOR_table
+
+
+normalStart
+		BANKSEL		PCON
+		bsf			PCON,NOT_BOR
+		bsf			PCON,NOT_POR
+		BANKSEL		H'20'
+
 		lgoto		ready
 
 greet_table
-	      dt		CR,LF,"Vince's CNC MILL V1.0",CR,LF
+	      dt		CR,LF,"Vince's CNC MILL V1.1",CR,LF
 	      retlw		0
 
+
+BOR_table
+		dt			CR,LF,"BROWNOUT RESET",CR,LF
+		retlw		0
 
 ;********************************************************
 ;             END of Stepper Motor controller
