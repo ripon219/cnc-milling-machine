@@ -1,0 +1,23 @@
+Version 1.1
+	- Added File-About... dialog to show GUI version and Firmware version in use
+	- Added File-Refresh Mill Location... to force a refresh of the mill location from firmware (for problems)
+	- Added File-Properties dialog to allow setting of:
+		- ZSafe setting - the level the z axis is set to before moving (should clear all obstacles)
+		- Show Vertices - Toggles display of Cyan dot at trace vertices
+		- Added control of motor cool down.  Enable flag, max time to cut before cooldown, and cooldown time.
+	- Integrated logging using Apache Log4j Logfactor5 window on request. (View-Logs...)
+	- Refactored all action list commands into seperate classes extending ActionListCommand - much cleaner.
+	- Improved and standardized tool and parameter prompting for commands.
+	- Show progress indication in status bar for all commands.
+	- Manage disabling of menu options while commands are running.
+	- Allow specification of max depth for tools.  Forces "pecking" when drilling, and multiple passes for milling.
+	- Removed "My Format" option as a file format - I won't use it anymore, so it was more crap to maintain
+	- Prompt for milling tool changes by tool name instead of step diameter
+	- Recognize and properly handle a brownout reset.  Hopefully this will retain the proper tool position.
+	- Recognize and adapt to the firmware version to enable or disable functions.
+	- Keep track of step by step moves with feedback of move commands in firmware version 1.1 and up
+	- Allow calibration to a specific location with firmware 1.1 and up
+	- Abstract start/stop button text and color changes and put it on the popup menu
+	- add a Mill Segment action to directly mill segments instead of isolating them (for board outlines)
+	- reorganize menus.
+	- Allow immediate resume during cooldown period.
