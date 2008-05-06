@@ -40,7 +40,6 @@ public class TracePolygon extends MillingGeometryAction {
 		newTrace.setComplete(isComplete());
 		newTrace.setDisplayOnly(displayOnly);
 		newTrace.setSelected(isSelected());
-		newTrace.setShowVertices(isShowVertices());
 		return newTrace;
 	}
 	

@@ -23,17 +23,8 @@ public class DrilledHole extends MillingAction implements Executable  {
 	 * @param xpos The absolute X coordinate of the center of the hole
 	 * @param ypos The absolute Y coordinate of the center of the hole
 	 * @param depth The depth of the hole in Z-steps
-	 * @param toolDiameter The diamter of the hole in x/y Steps - this determines the tool to use.
+	 * @param tool The tool to use
 	 */
-	public DrilledHole(int xpos, int ypos, int depth, int toolDiameter) {
-		super();
-		this.xpos = xpos;
-		this.ypos = ypos;
-		this.depth = depth;
-		this.tool = new Tool(Tool.DRILL,toolDiameter);
-		this.toolDiameter = toolDiameter;
-	}
-	
 	public DrilledHole(int xpos, int ypos, int depth, Tool tool) {
 		this.xpos = xpos;
 		this.ypos = ypos;
@@ -43,7 +34,7 @@ public class DrilledHole extends MillingAction implements Executable  {
 	}
 
 	public MillingAction getMirrorX() {
-		DrilledHole newHole = new DrilledHole(-xpos,ypos,depth,toolDiameter);
+		DrilledHole newHole = new DrilledHole(-xpos,ypos,depth,tool);
 		newHole.setComplete(isComplete());
 		newHole.setDisplayOnly(displayOnly);
 		newHole.setSelected(isSelected());
@@ -59,7 +50,7 @@ public class DrilledHole extends MillingAction implements Executable  {
 	/**
 	 * Drills the hole on the specified machine by positioning to the hole, starting the drill, 
 	 * and moving the Z-Axis.  Starts and stops the drill motor as needed and moves the axis to
-	 * the approriate absolute positons.  Ends with the drill off and the Z-axis withdrawn to -10 
+	 * the approriate absolute positons.  Ends with the drill off and the Z-axis withdrawn to ZSafe 
 	 * steps.  Starts the vacuum if it is not on, but does NOT stop it.  Returns with the drill 
 	 * motor in the state it was on starting (allowing the caller to decide if the motor should be 
 	 * switched on and off, or just left on for the whole process.
@@ -80,7 +71,7 @@ public class DrilledHole extends MillingAction implements Executable  {
 			}
 			// Drill the hole
 			// Raise Z and Move to hole location
-			mill.moveTo(xpos,ypos,-10);
+			mill.moveTo(xpos,ypos,mill.getZSafe());
 			mill.setXHold(true);
 			mill.setYHold(true);
 			
@@ -94,8 +85,22 @@ public class DrilledHole extends MillingAction implements Executable  {
 			} catch (InterruptedException e) {
 				// ignore the exception
 			} 
-			mill.moveOffset(0,0,depth); // Drill it
-			mill.moveOffset(0,0,0-depth); // remove drill
+			
+			
+			int passDepth = tool.getMaxDepth();
+			if (passDepth == 0 || passDepth > depth) {
+				passDepth = depth;
+			}
+
+			int total = 0;
+			
+			do {
+				total += passDepth;
+				total = total > depth ? depth : total; // max it at the depth
+				mill.moveOffset(0,0,total); // Drill it
+				mill.moveOffset(0,0,0-total); // remove drill
+			} while (total < depth);
+			
 			mill.setXHold(false);
 			mill.setYHold(false);
 

@@ -23,6 +23,7 @@ public class ProgressStatusBar extends JPanel {
 	private JTextField totalDistanceTF;
 	private JTextField totalTimeTF;
 	private JTextField selectCountTF;
+	private boolean running = false;
 	
 
 	public ProgressStatusBar() {
@@ -141,6 +142,7 @@ public class ProgressStatusBar extends JPanel {
 	 * @param maximum
 	 */
 	private void internalStartProgress(int maximum) {
+		running = true;
 		if (maximum == 0) {
 			progressBar.setIndeterminate(true);
 		} else {
@@ -155,6 +157,7 @@ public class ProgressStatusBar extends JPanel {
 	 * thread (if it is not already).
 	 */
 	public void stopProgress() {
+		running = false;
 		if (SwingUtilities.isEventDispatchThread()) {
 			progressBar.setIndeterminate(false);
 		} else {
@@ -363,6 +366,10 @@ public class ProgressStatusBar extends JPanel {
 
 	private void internalResetProgress() {
 		progressBar.setValue(0);
+	}
+
+	public boolean isRunning() {
+		return running;
 	}
 }
 

@@ -15,6 +15,7 @@ public class MillingException extends RuntimeException {
 	public static final int INVALID_COMMAND = 3;
 	public static final int NOT_IMPLEMENTED = 4;
 	public static final int SOFT_LIMIT = 5;
+	public static final int BROWNOUT_ERROR = 6;
 
 	private int reason = UNKNOWN;
 
@@ -22,9 +23,12 @@ public class MillingException extends RuntimeException {
 		"Unknown Exception",
 		"Serial Character cancelled receive",
 		"Limit Switch has been tripped",
-		"Invalid Command - probablt communications error",
+		"Invalid Command - probably communications error",
 		"Command not implemented - old firmware or communications error",
-		"Software Location Limit Exceeeded: "};
+		"Software Location Limit Exceeded: ",
+		"Hardware Brownout Reset"};
+	
+	private String response = null;
 
 	public MillingException() {
 		super();
@@ -42,16 +46,23 @@ public class MillingException extends RuntimeException {
 		super(arg0, arg1);
 	}
 	
-	public MillingException(int reason) {
+	public MillingException(String response, int reason) {
 		this(REASON_DESCRIPTION[reason]);
+		this.reason = reason;
+		this.response = response;
 	}
 
 	public MillingException(int reason, String text) {
 		this(REASON_DESCRIPTION[reason]+text);
+		this.reason=reason;
 	}
 	
 	public int getReason() {
 		return reason;
+	}
+
+	public String getResponse() {
+		return response;
 	}
 
 }

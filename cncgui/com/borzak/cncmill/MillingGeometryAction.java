@@ -16,7 +16,6 @@ public abstract class MillingGeometryAction extends MillingAction {
 
 	private Geometry geometry;
 	protected Color primaryColor = Color.BLACK;
-	protected boolean showVertices = true;
 	Rectangle bounds = null;
 
 	public MillingGeometryAction() {
@@ -56,7 +55,7 @@ public abstract class MillingGeometryAction extends MillingAction {
 		
 		g.fillPolygon(x,y,coordinates.length);
 		
-		if (isShowVertices()) {
+		if (surface.isShowVertices()) {
 			// Mark vertices
 			g.setColor(Color.CYAN);
 			
@@ -107,16 +106,6 @@ public abstract class MillingGeometryAction extends MillingAction {
 				new Coordinate((int)x+width,(int)y),
 				new Coordinate((int)x,(int)y)
 				}),new LinearRing[] {}));
-	}
-
-
-	public boolean isShowVertices() {
-		return showVertices;
-	}
-
-
-	public void setShowVertices(boolean showVertices) {
-		this.showVertices = showVertices;
 	}
 
 
