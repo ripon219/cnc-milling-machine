@@ -21,8 +21,9 @@ public class MilledMovement extends MillingAction implements Executable {
 	}
 	
 
-	public MillingAction getMirrorX() {
-		MilledMovement newMovement = new MilledMovement(-getXpos(), getYpos());
+	public MillingAction getTransformedInstance(MillingTransform transform) {
+		MillLocation newLoc = transform.transform(getXpos(), getYpos());
+		MilledMovement newMovement = new MilledMovement(newLoc.getX(), newLoc.getY());
 		newMovement.setComplete(isComplete());
 		newMovement.setDisplayOnly(displayOnly);
 		newMovement.setSelected(isSelected());

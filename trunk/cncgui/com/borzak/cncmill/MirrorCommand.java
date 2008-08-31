@@ -12,6 +12,7 @@ import org.apache.commons.logging.*;
 
 public class MirrorCommand extends ActionListCommand {
 	private static Log log = LogFactory.getLog(MirrorCommand.class);
+	private MillingTransform transform = new MirrorXTransform();
 
 	public MirrorCommand(MillingActionList actionsList,
 			ProgressStatusBar statusBar) {
@@ -28,7 +29,7 @@ public class MirrorCommand extends ActionListCommand {
 		
 		for (Iterator iter = list.iterator(); iter.hasNext();) {
 			MillingAction a = (MillingAction) iter.next();
-			newActions.add(a.getMirrorX());
+			newActions.add(a.getTransformedInstance(transform));
 		}
 		
 		// Add the new traces

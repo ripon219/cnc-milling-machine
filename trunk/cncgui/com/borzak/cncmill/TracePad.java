@@ -35,9 +35,9 @@ public class TracePad extends MillingGeometryAction {
 		}
 	
 	
-	public MillingAction getMirrorX() {
-		
-		TracePad newPad = new TracePad(-xpos, ypos, width, height);
+	public MillingAction getTransformedInstance(MillingTransform transform) {
+		MillLocation newLoc = transform.transform(xpos, ypos);
+		TracePad newPad = new TracePad(newLoc.getX(), newLoc.getY(), width, height);
 		newPad.setComplete(isComplete());
 		newPad.setDisplayOnly(displayOnly);
 		newPad.setSelected(isSelected());

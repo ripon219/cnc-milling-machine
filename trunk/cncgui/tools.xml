@@ -51,4 +51,58 @@
    <int>22</int> 
   </void> 
  </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>90 Deg EndMill .030</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>5</int> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>7</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>60 Deg Engraving @1</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>5</int> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>7</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Red Drill 0.0310</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>15</int> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>7</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string></string> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>5mm Drill (.196)</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>30</int> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>47</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string></string> 
+  </void> 
+ </object> 
 </java> 
