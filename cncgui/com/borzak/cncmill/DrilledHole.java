@@ -32,9 +32,10 @@ public class DrilledHole extends MillingAction implements Executable  {
 		this.tool = tool;
 		this.toolDiameter = tool.getStepDiameter();
 	}
-
-	public MillingAction getMirrorX() {
-		DrilledHole newHole = new DrilledHole(-xpos,ypos,depth,tool);
+	
+	public MillingAction getTransformedInstance(MillingTransform transform) {
+		MillLocation newLoc = transform.transform(xpos,ypos);
+		DrilledHole newHole = new DrilledHole(newLoc.getX(),newLoc.getY(),depth,tool);
 		newHole.setComplete(isComplete());
 		newHole.setDisplayOnly(displayOnly);
 		newHole.setSelected(isSelected());

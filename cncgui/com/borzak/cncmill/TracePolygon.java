@@ -1,8 +1,10 @@
 package com.borzak.cncmill;
 
 import java.awt.*;
+import java.awt.Point;
 
 import com.vividsolutions.jts.geom.*;
+import com.vividsolutions.jts.geom.Polygon;
 
 /**
  * TracePolygon 
@@ -23,15 +25,32 @@ public class TracePolygon extends MillingGeometryAction {
 		primaryColor = Color.MAGENTA;
 	}
 	
+	/**
+	 * Create a TracePolygon from an array of coordinates even=x, odd = y 
+	 */
+	public TracePolygon(java.awt.Point[] points) {
+		super();
+		
+		Coordinate[] coordinates = new Coordinate[points.length+1];
+		
+		for (int i = 0; i < points.length; i++) {
+			Point p = points[i];
+			coordinates[i] = new Coordinate(p.x,p.y);
+		}
+		
+		coordinates[coordinates.length-1] = new Coordinate(points[0].x,points[0].y);
+		LinearRing lr = geoFactory.createLinearRing(coordinates);
+		this.geometry = geoFactory.createPolygon(lr, new LinearRing[] {});
+		primaryColor = Color.MAGENTA;
+	}
 	
-	public MillingAction getMirrorX() {
+	public MillingAction getTransformedInstance(MillingTransform transform) {
 
 		Coordinate[] coordinates = getGeometry().getCoordinates();
 		if (coordinates.length == 0) return this;
 		Coordinate[] newCoordinates = new Coordinate[coordinates.length];
 		for (int i = 0; i < coordinates.length; i++) {
-			Coordinate coordinate = coordinates[i];
-			newCoordinates[i] = new Coordinate(-coordinate.x, coordinate.y, coordinate.z);
+			newCoordinates[i] = transform.transform(coordinates[i]);
 		}
 
 		Geometry mirroredG = geoFactory.createPolygon(geoFactory.createLinearRing(newCoordinates), new LinearRing[] {});

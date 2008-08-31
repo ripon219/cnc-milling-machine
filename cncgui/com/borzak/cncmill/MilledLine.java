@@ -39,8 +39,10 @@ public class MilledLine extends MillingGeometryAction implements Executable {
 		this.tool = tool;
 	}
 
-	public MillingAction getMirrorX() {
-		MilledLine newLine = new MilledLine(-xstart, ystart, -xpos, ypos, depth, tool);
+	public MillingAction getTransformedInstance(MillingTransform transform) {
+		MillLocation start = transform.transform(xstart,ystart);
+		MillLocation pos = transform.transform(xpos,ypos);
+		MilledLine newLine = new MilledLine(start.getX(), start.getY(), pos.getX(), pos.getY(), depth, tool);
 		newLine.setComplete(isComplete());
 		newLine.setDisplayOnly(displayOnly);
 		newLine.setSelected(isSelected());

@@ -135,10 +135,6 @@ public abstract class MillingAction implements MaskConstants {
 		return new MillLocation(getXpos(), getYpos(), getDepth());
 	}
 
-	/**
-	 * Creates another instance of this that is mirrored around the X-axis
-	 * (aka x * -1).
-\	 */
-	public abstract MillingAction getMirrorX();
+	public abstract MillingAction getTransformedInstance(MillingTransform transform);
 	
 }

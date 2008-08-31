@@ -35,9 +35,10 @@ public class TraceSegment extends MillingGeometryAction {
 		primaryColor = Color.RED;
 	}
 	
-	public MillingAction getMirrorX() {
-
-		TraceSegment newTrace = new TraceSegment(-xstart, ystart, -xpos, ypos, toolDiameter);
+	public MillingAction getTransformedInstance(MillingTransform transform) {
+		MillLocation start = transform.transform(xstart, ystart);
+		MillLocation pos = transform.transform(xpos,ypos);
+		TraceSegment newTrace = new TraceSegment(start.getX(), start.getY(), pos.getX(), pos.getY(), toolDiameter);
 		newTrace.setComplete(isComplete());
 		newTrace.setDisplayOnly(displayOnly);
 		newTrace.setSelected(isSelected());

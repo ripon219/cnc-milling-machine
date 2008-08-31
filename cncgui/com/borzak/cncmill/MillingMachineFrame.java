@@ -918,17 +918,11 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 // Edit - Mirror (left-right)		
 		Action mirrorAction = new MirrorCommand(actionsList2,statusBar);
 		
+// Edit - Skew
+		Action skewAction = new SkewCommand(actionsList2, statusBar);
+		
 // Edit - Properties
-		Action propertiesAction = new AbstractAction("Properties"){
-
-			private static final long serialVersionUID = 1L;
-			
-			public void actionPerformed(ActionEvent arg0) {
-				//TODO replace this with functional code
-				JOptionPane.showMessageDialog(null, "Not Implemented");
-			}
-		};
-		propertiesAction.setEnabled(false);
+		Action propertiesAction = new PropertiesCommand(actionsList2, statusBar);
 		
 // File - About... action
 		Action aboutAction = new AbstractAction("About..."){
@@ -936,7 +930,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			private static final long serialVersionUID = 1L;
 
 			public void actionPerformed(ActionEvent evt) {
-				String s = "GUI Version: 1.1\n";
+				String s = "GUI Version: 1.2\n";
 				s = s+"Firmware Version: "+mill.getFirmwareVersion();
 				JOptionPane.showMessageDialog(null,s,"About Vince's Milling Machine GUI",JOptionPane.PLAIN_MESSAGE);
 			}
@@ -992,6 +986,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		editMenu.add(new JMenuItem(undoAction));
 		editMenu.add(new JMenuItem(traceAction));
 		editMenu.add(new JMenuItem(mirrorAction));
+		editMenu.add(new JMenuItem(skewAction));
 		editMenu.add(new JMenuItem(isolateAction));
 		editMenu.add(new JMenuItem(optimizeAction));
 		editMenu.addSeparator();
@@ -1062,6 +1057,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		popup.addSeparator();
 		popup.add(new JMenuItem(traceAction));
 		popup.add(new JMenuItem(mirrorAction));
+		popup.add(new JMenuItem(skewAction));
 		popup.add(new JMenuItem(isolateAction));
 		popup.add(new JMenuItem(optimizeAction));
 		popup.addSeparator();
@@ -1351,7 +1347,8 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		// This one loads a RS274X Gerber file without messing with traces
 		FileReader fr = null;
 		BufferedReader br = null;
-		int diameter = props.getDiameter();
+		int xsteps = props.getDiameter();
+		int ysteps = -1;  // if ysteps is -1 it is a circular tool
 		int count = 0;
 		double factor = 240.0D; // 240 steps per inch
 		HashMap tools = new HashMap();
@@ -1364,15 +1361,18 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		boolean omitleadingzeros = false;
 		boolean omittrailingzeros = false;
 		boolean absolute = true;
+		boolean polygonMode = false;
 		
 		int xbefore = 2;
 		int xafter = 4;
 		int ybefore = 2;
 		int yafter = 4;
 		
+		List pointList = new LinkedList();
+		
 		
 		tools.put("dft","Default Tool");
-		toolDiameter.put("dft",new int[] {diameter});
+		toolDiameter.put("dft",new int[] {xsteps});
 		String newTool = "dft";
 		
 		try {
@@ -1421,6 +1421,8 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 							Pattern.compile("\\s*G01X(-?[0-9]+)Y(-?[0-9]+)(D[0-9]+)"), // 10 = Linear Interpolation
 							Pattern.compile("\\s*G70"), // 11 = Inch Mode
 							Pattern.compile("\\s*G71"), // 12 = Millimeter Mode
+							Pattern.compile("\\s*G36"), // 13 = Start Polygon mode
+							Pattern.compile("\\s*G37"), // 14 = End Polygon mode
 							
 							
 							Pattern.compile(".*") // LAST (DEFAULT) = Matches anything (unrecognized)
@@ -1447,12 +1449,14 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 										log.info("No definition loaded for tool "+newTool+" Ignoring tool change!");
 									} else {
 										int dsteps = ((int[]) toolDiameter.get(newTool))[0];
-										diameter = dsteps;
+										xsteps = dsteps;
+										ysteps = ((int[]) toolDiameter.get(newTool))[1];
 										log.info("Load: "+desc+" Steps: "+dsteps);
 										
-										if (!props.isToolOverride()) {
+										if (props.isToolOverride()) {
 											// if the override is not set, use the diameter set.
-											diameter = dsteps;
+											xsteps = dsteps;
+											ysteps = -1;  // This is probably not a good idea.
 										}
 									}
 									break;
@@ -1513,9 +1517,12 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 									
 									// calculate the location/ adjust for factor
 									int dsteps = (int) (xdbl * factor);
+									if (dsteps == 0) {
+										dsteps = 1;
+									}
 
 									tools.put(toolName,toolName+":"+m.group());
-									toolDiameter.put(toolName,new int[] {dsteps});
+									toolDiameter.put(toolName,new int[] {dsteps,-1});
 									
 									log.info("Defined Circular Tool "+toolName+" as diameter "+dsteps);
 									break;
@@ -1552,12 +1559,21 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 									
 									if (m.group(3).equals("D03")) {
 										// Draw a pad
-										//TODO this should be replaced with a polygon creator
-										actionsList2.add(action = new TracePad(xpos,ypos,diameter,diameter)); //TODO - Rectangle
-										lastx = xpos;
-										lasty = ypos;
-										count++;
-										log.info("Loaded a Pad at "+xpos+","+ypos+" with diameter "+diameter);
+										//TODO handle octagons, etc.  Maybe macros and thermals
+										if (ysteps == -1) { 
+											// circular pad
+											actionsList2.add(action = new TracePad(xpos,ypos,xsteps,xsteps)); //TODO - Circle
+											lastx = xpos;
+											lasty = ypos;
+											count++;
+											log.info("Loaded a Circular (Square) Pad at "+xpos+","+ypos+" with diameter "+xsteps);
+										} else {
+											actionsList2.add(action = new TracePad(xpos,ypos,xsteps,ysteps));
+											lastx = xpos;
+											lasty = ypos;
+											count++;
+											log.info("Loaded a Rectangular Pad at "+xpos+","+ypos+" with dimensions "+xsteps+","+ysteps);
+										}
 									} else if (m.group(3).equals("D01")) {
 										// Draw the line 
 										
@@ -1565,10 +1581,15 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 											log.info("Skipping duplicate route instruction to current position");
 										} else {
 											if (lastx != -9999) {
-												action = new TraceSegment(lastx, lasty, xpos, ypos, diameter);
-												actionsList2.add(action); 
-												log.info("Loaded a Trace from "+lastx+","+lasty+ " to "+xpos+","+ypos+" width ="+diameter);
-												count++;
+												if (polygonMode) {
+													// In polygon mode build up the polygon until it is turned off
+													pointList.add(new Point(lastx,lasty));
+												} else {
+													action = new TraceSegment(lastx, lasty, xpos, ypos, xsteps);
+													actionsList2.add(action); 
+													log.info("Loaded a Trace from "+lastx+","+lasty+ " to "+xpos+","+ypos+" width ="+xsteps);
+													count++;
+													}
 											}
 											lastx = xpos;
 											lasty = ypos;
@@ -1590,6 +1611,24 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 									log.info("Millimeter Mode");
 									break;
 									
+								case 13: // G36 - Start Polygon Mode
+									polygonMode = true;
+									pointList.clear();
+									break;
+									
+								case 14: // G37 - End Polygon Mode
+									if (polygonMode) {
+										Point[] points = new Point[pointList.size()];
+										points = (Point[]) pointList.toArray(points);
+										action = new TracePolygon(points);
+										actionsList2.add(action); 
+										log.info("Loaded a TracePolygon with "+points.length+ " points");
+//										count++;
+									} else {
+										log.info("WARNING: Ending polygon mode when not IN polygon mode!");
+									}
+									polygonMode = false;
+									break;
 									
 								default:
 									if (block.toString().trim().length() == 0) break; // empty = no message

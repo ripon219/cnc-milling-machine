@@ -1,3 +1,11 @@
+Version 1.2
+	- Add MillingTransform to allow command pattern transformations of MillingAction instances
+	- Refactor getMirrorX() into a generic getTransformedInstance(MillingTransform)
+	- Added SkewCommand/SkewDialog/SkewTransform to handle skew of x/y axis for double sided boards
+	- Implement G36/G37 Polygon mode for loading Gerber files (needed for SMT pads)
+	- Implement basic PropertiesCommand to dump the selected properties (toString()) to the log
+	
+
 Version 1.1
 	- Added File-About... dialog to show GUI version and Firmware version in use
 	- Added File-Refresh Mill Location... to force a refresh of the mill location from firmware (for problems)

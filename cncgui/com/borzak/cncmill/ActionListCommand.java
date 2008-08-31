@@ -64,7 +64,7 @@ public abstract class ActionListCommand extends AbstractAction implements MaskCo
 	}
 
 	protected void showDialog() {
-		return;  // defualt is not dialog
+		return;  // default is not dialog
 	}
 
 	protected abstract void execute();
