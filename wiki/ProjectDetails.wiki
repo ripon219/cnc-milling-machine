@@ -20,8 +20,8 @@ Currently, the software works only with my machine microcode.  It does not gener
    * I like designing and building electronic circuits, but I rarely developed anything beyond a breadboard stage because I dislike most prototyping methods.
    * Chemical Etching sucks
    * PCB Prototyping houses just cost too much in small volumes.
-   * My regular rockclimbing partner found other interests, so I found myself with some spare time on weekends.  If you happen to be in Tucson on a weekend and want to go climbing – call me!
-   * I honestly didn’t think it would take me 9+ months to finish. (Ha! as if it will ever be finished)
+   * My regular rockclimbing partner found other interests, so I found myself with some spare time on weekends.  If you happen to be in Tucson on a weekend and want to go climbing -- call me!
+   * I honestly didn't think it would take me 9+ months to finish. (Ha! as if it will ever be finished)
    * I am way too cheap to buy a commercial machine.
    * I just loved the idea of building a machine that I would use to build additional parts of the machine.
 
@@ -33,7 +33,7 @@ The primary components are:
 
    * Mechanical: The physical three-axis milling machine based on a Dremel tool, stepper motors and Acme drive screws.
    * Hardware: A Microcontroller based three axis stepper motor controller board.
-   * Firmware: The microcode that is burned into the controller board’s processor.
+   * Firmware: The microcode that is burned into the controller board's processor.
    * GUI: A GUI controller application written in Java that does all of the heavy lifting related to processing of various file formats, calculation of isolation trace patterns, and simplified manual control and monitoring of the machine.
 
 Because this open-source project is more about software than hardware, I will list these in reverse order.
@@ -85,7 +85,7 @@ The microcode controls the circuit that drives the actual hardware pieces: stepp
 
 It is written directly in the RISC assembly language for a PIC16F877 microcontroller chip.  
 
-For those that don’t know, this is one of many remarkable little chips that combine an 8 bit processor, RAM, EEPROM storage, and Flash memory for program storage onto a single Integrated Circuit.  This particular IC has (ignoring many features I did not use):
+For those that don't know, this is one of many remarkable little chips that combine an 8 bit processor, RAM, EEPROM storage, and Flash memory for program storage onto a single Integrated Circuit.  This particular IC has (ignoring many features I did not use):
 
    * Operating speed from DC to 20 MHz , with a minimum instruction cycle of 200 ns.
    * Up to 8K x 14 words of FLASH Program Memory
@@ -118,9 +118,9 @@ The microcode implements the following commands:
  ?<cr> = Dump this message 
 }}}
 
-The Java program accomplishes its magic by sending combinations of these commands.  The microcode indicates it is ready to receive a command by sending a ‘$’ prompt.  Commands do not return the $ prompt until they are complete.
+The Java program accomplishes its magic by sending combinations of these commands.  The microcode indicates it is ready to receive a command by sending a '$' prompt.  Commands do not return the $ prompt until they are complete.
 
-You may note that the "Mx+nnn[y+mmm]" command does ONLY relative motions.  The machine does track its position, but it is the job of the Java program to translate the current position and desired position in to relative motions to get there.  It is also limited to 254 steps per movement.  What can I say – it’s an 8 bit processor and I am lazy.
+You may note that the "Mx+nnn[y+mmm]" command does ONLY relative motions.  The machine does track its position, but it is the job of the Java program to translate the current position and desired position in to relative motions to get there.  It is also limited to 254 steps per movement.  What can I say: it's an 8 bit processor and I am lazy.
 
 The simultaneous movement of both x and y axis at a time uses a modified [ http://en.wikipedia.org/wiki/Bresenham's_line_algorithm Bresenham line algorithm] to move the cutting head in the best possible straight line between the current point and the offset point.  The z axis is moved independently. When either the x or y axis is moved with the z axis in a single command, the z axis is always moved first.  The net result is this version is good for 2D milling, but not 3D milling at this time.
 
@@ -128,7 +128,7 @@ The SD delay command controls the speed of stepping by setting the delay (in mil
 
 The SI (steps per inch) is really only used in the microcode by the MN (manual movement) command (see manual mode below).  When using the Java frontend, this is loaded and used for the manual movement buttons only.  Actual steps per inch will be determined by your hardware.
 
-The CX, CY, and CZ commands let you set the zero axis for your milling operations.  This really should allow calibration to other than a zero point – expect to see that in a future version.
+The CX, CY, and CZ commands let you set the zero axis for your milling operations.  This really should allow calibration to other than a zero point -- expect to see that in a future version. (This feature has added with new gui and firmware versions)
 
 The MN command was added before I ever created the Java front-end.  Basically it lets you move the milling head around (really it moves the table around). By pressing specific keys.
 
@@ -143,7 +143,7 @@ A(X-)  S(Stop)   D(X+)
 
 You may notice the layout corresponds to the positions of the keys on the left side of a QWERTY keyboard.  Pressing a directional key (like Q) will move the specified axis in the specified direction one inch (or whatever value you set the inch register to with the SI instruction), or until you press the S key.   
 
-Manual mode is handy to calibrate and test your machine – all you need is a terminal program.
+Manual mode is handy to calibrate and test your machine -- all you need is a terminal program.
 
 There are enough spare I/O pins on the 16F877 that I considered hooking up a keypad to control the machine manually, but the more I use it, the more I realize it is just much easier to use the Java interface.
 
@@ -207,7 +207,7 @@ The GPIO pins on the PIC are used as follows:
 
 If you were keeping track, you may have noticed that 11 of the available GPIO pins are not currently used.  I left Port B open for possible future keypad and LCD interface, RC3/RC4 for a possible I2C EEPROM expansion or interface to a SPI device like a SD card.  The reality of this is if I were to build it again, I would probably opt for a lower pin count device and only leave the I2C pins for expansion.  Additional memory, LCD and keypad interfaces would be much easier to connect via a single I2C bus and would have cleaned up the board layout.
 
-In the above table, the ‘\’ is used to indicate active low signals or, in the case of the motors the *not* connections of the unipolar stepper coils.  For example,  \Limit-Zmax indicates the connection for the Z Axis Maximum limit switch, which should assert a logic low to indicate the switch is tripped.
+In the above table, the '\' is used to indicate active low signals or, in the case of the motors the *not* connections of the unipolar stepper coils.  For example,  \Limit-Zmax indicates the connection for the Z Axis Maximum limit switch, which should assert a logic low to indicate the switch is tripped.
 
 The circuit can be split into a few simple subsystems.  Motor drivers, relay drivers, serial communications, and limit switch connections.
 
@@ -215,7 +215,7 @@ The three (x,y,z) motor driver circuits are all very simple.  Each motor is a un
 
 The gate of each MOSFET is connected via a (10k) current limiting resistor to one of the PIC pins configured as an output.  To energize the motor coil, the software drives the pin to TTL high, causing the MOSFET to conduct and pull the end of the motor coil to ground (sinking a significant amount of current in the process).
 
-The specific MOSFETs used (IRL530) are designed to be driven by logic levels.  They also contain a reverse diode to shunt the substantial back-emf spike that occurs when the coil is switched off.  I used MOSFETs so there would be very little voltage drop to the motor coils, and the switching device itself would not have to dissipate much heat.  If you prefer, a TIP120 or equivalent bipolar junction transistor could be substituted here.  I actually used TIP120’s in this circuit before my IRL530’s arrived from [http://www.jameco.com Jameco]
+The specific MOSFETs used (IRL530) are designed to be driven by logic levels.  They also contain a reverse diode to shunt the substantial back-emf spike that occurs when the coil is switched off.  I used MOSFETs so there would be very little voltage drop to the motor coils, and the switching device itself would not have to dissipate much heat.  If you prefer, a TIP120 or equivalent bipolar junction transistor could be substituted here.  I actually used TIP120's in this circuit before my IRL530's arrived from [http://www.jameco.com Jameco]
 
 To provide visual feedback of the state of each motor coil, I also included a 220 ohm resistor and LED between the PIC output port and ground (in parallel to the 10 k current limiting resistor).  These could be omitted with no effect on the operation of the circuit.
 
@@ -230,13 +230,13 @@ The actual motor connectors are 8 pin .100 pin headers in the following sequence
 
 Software is responsible for driving the motor coils in the proper sequence (which always has two motors energized).  Half-stepping or less power hungry 
 
-The Relay drivers are very similar to the motor circuits – MOSFETs driving coils, but they also include an opto-coupler to allow both a different positive and ground potential for the coil than the logic circuit.
+The Relay drivers are very similar to the motor circuits MOSFETs driving coils, but they also include an opto-coupler to allow both a different positive and ground potential for the coil than the logic circuit.
 
 The relay circuit has the PIC output pin driving the LED in a packaged dual phototransistor optocoupler (ILD615-3) via a current limiting resistor (220 ohm) in parallel with a separate current limiting resistor (220 ohm) driving a (optional) relay status LED.
 
-The phototransistor in the optocoupler switches the emitter from the +RLY power source to the Gate of a MOSFET.  The Source of the MOSFET is tied to the –RLY power source, while the Drain drives the relay coil.
+The phototransistor in the optocoupler switches the emitter from the +RLY power source to the Gate of a MOSFET.  The Source of the MOSFET is tied to the -RLY power source, while the Drain drives the relay coil.
 
-This isolates the logic ground that drives the optocoupler LED from the separate –RLY power source that acts as the source potential for the relay coil.
+This isolates the logic ground that drives the optocoupler LED from the separate +RLY power source that acts as the source potential for the relay coil.
 
 The result is the relay coil (which is a 24v model I happened to have laying around) is driven with 24v because the +RLY is connected to a +12v source, while the MOSFET pulls the other end of the coil to a -12v potential provided on the –RLY source.
 
@@ -244,7 +244,7 @@ Because I drive the whole thing with a nice cheap ATX power supply I had laying 
 
 I should have done the same optocoupler thing with the motor drives, but by that time I just wanted to get the first version done.
 
-The relay switches are connected to spade connectors on the PCB (yup – salvaged those from another board too).  The spade connectors have a ground, AC IN (full *hot* line current), and Switched Vacuum Out and Drill Out connectors.
+The relay switches are connected to spade connectors on the PCB (yup -- salvaged those from another board too).  The spade connectors have a ground, AC IN (full *hot* line current), and Switched Vacuum Out and Drill Out connectors.
 
 On my machine, I have a separate outlet box with a standard 120V AC light switch and two outlets.  The powerline from the wall connects the hot to the light switch, the light switch to the AC In on the PCB, and the switched vacuum and drill outputs to the outlets.  The ground is connected to the switch, PCB and outlets, and the neutral is connected to the outlets.  
 
@@ -260,7 +260,7 @@ The board does not include any pull-up resistors for the limit switches.  In my 
 
 In fact, I would re-think much of the limit switch configuration.  Certainly, limit switches are important, but not so much as I once thought.  The reality is that limit switches should *not* be tripped in normal machine operations, and there is really no way to automatically handle the case that they are tripped.  If I was starting over, I would likely include a single limit switch input pin that goes active low when tripped.  I would wire all of the switches in series to that one pin with a single pull up resistor on the PCB.  If the pin goes low, software should stop the machine and say "fix it!" to the operator.  It really should be pretty obvious what caused a limit switch to trip, so it really is not necessary to track each switch separately in hardware and software.
 
-The final functional piece is a MAX232 equivalent line driver to convert the TTL logic level serial TX/RX from TTL to RS-232 levels to interface with my laptop.  I ended up using a Texas Instruments equivalent because they are (and I am) cheap.   With 3+ amps of power needed to drive the motors, I didn’t see any need to use a low power variant of the MAX232.  Any chip with the same pinout will work here.  I actually used 10uf caps instead of the 1uf required, because, of course, that is what I had laying around.
+The final functional piece is a MAX232 equivalent line driver to convert the TTL logic level serial TX/RX from TTL to RS-232 levels to interface with my laptop.  I ended up using a Texas Instruments equivalent because they are (and I am) cheap.   With 3+ amps of power needed to drive the motors, I didn't see any need to use a low power variant of the MAX232.  Any chip with the same pinout will work here.  I actually used 10uf caps instead of the 1uf required, because, of course, that is what I had laying around.
 
 All of the power and ground connections route to a single power connector in a .100 pitch pin header.  There are separate +RLY, -RLY, +X, +Y, and +Z connections and traces, so it is possible to drive the X, Y, and Z motors with different positive potentials.  In my case they are all +12v, because that is what the ATX power supply gives me.
 
@@ -297,10 +297,10 @@ My machine is basically the one described in the above link, except:
    * The Z axis has a total travel of about 4", but the distance between the table and the bottom of the fixed part of the z-axis is about 2".  The practical limit on the height of the piece to be milled is 2".
    * I built my own stepper motor controller because I am way to cheap to pay $200 for something I can build from my scrap box, and it was a lot more fun that way.
    * I used stepper motors from salvaged Ink Jet printers.  I took apart quite a few, so I am not sure which one I ended up using.  At some point I may upgrade these to something a bit beefier so I can get a little more speed without losing too much torque.
-   * I purchased a complete Z-Axis assembly with the drive screw and stepper motor already attached from a seller on EBay.  The one I got has an aluminum body, min and max limit switches (actually a very cool optical slotted switch with a spring assembly that triggers the same limit circuit for min and max limits.  The tool mounting is on a spring platform that allows some give – great for drilling!  This included a 12v bipolar capable stepper motor, acme drive screw, guide rails, and limit switch circuitry.  You will probably not find one of these, so buy and improvise your own, or build the one from the webpage.  The motor and drive screw combination gives me 230 steps per inch (about a .004/inch resolution)
-   * I found a lot of 10 precision Acme drive screws and matching nuts, also on Ebay, for less than I could have purchased one of the drive screws.  I used  two – one for the x axis and one for y axis.  These were 23" long, 19" of that was threaded.  This necessitated scaling up the length of the x and y axis.  
+   * I purchased a complete Z-Axis assembly with the drive screw and stepper motor already attached from a seller on EBay.  The one I got has an aluminum body, min and max limit switches (actually a very cool optical slotted switch with a spring assembly that triggers the same limit circuit for min and max limits.  The tool mounting is on a spring platform that allows some give -- great for drilling!  This included a 12v bipolar capable stepper motor, acme drive screw, guide rails, and limit switch circuitry.  You will probably not find one of these, so buy and improvise your own, or build the one from the webpage.  The motor and drive screw combination gives me 230 steps per inch (about a .004/inch resolution)
+   * I found a lot of 10 precision Acme drive screws and matching nuts, also on Ebay, for less than I could have purchased one of the drive screws.  I used  two -- one for the x axis and one for y axis.  These were 23" long, 19" of that was threaded.  This necessitated scaling up the length of the x and y axis.  
       * The ends of the drive screws had different diameter steps that I used in my design to provide thrust management.  I drilled a hole and positioned the end of the drive screw through the hole so that one of the steps in the rod end was flush with the outside edge of the UHMW end cap.  Another piece of UHMW holds a brass washer against the diameter step to prevent it from moving outward.  A second brass washer and a shaft collar on the outside of the hold down UHMW piece keeps the screw from moving in the other direction, and prevents the thrust force from being transmitted to the Stepper motor on the other end of the assembly.
-      * The Ebay acme nuts were also totally different – essentially a round nut with two symmetric half-circles on opposite sides.  I used drilled holes with pins that held this into place in the routed linear slide components.  This had the additional benefit of allowing some freedom in the orientation of the screw so it need not be perfectly straight in the linear slide to prevent binding.
+      * The Ebay acme nuts were also totally different -- essentially a round nut with two symmetric half-circles on opposite sides.  I used drilled holes with pins that held this into place in the routed linear slide components.  This had the additional benefit of allowing some freedom in the orientation of the screw so it need not be perfectly straight in the linear slide to prevent binding.
       * I still have 8 of the Acme drive screws if anyone is interested.  I will eventually sell them on EBay, but I can be convinced to do it sooner if anyone is interested.
    * I omitted the lateral stiffening screws on the linear slides because of lack of clearance and the belief that they are not necessary.
    * The replacement EBay z-axis is heavier than the specified z-axis, and needed to be mounted from the sides.  Instead of the single larger diameter support in the document, I used two smaller diameter black pipes for support from both sides of the z-axis.  The net result is a very secure mounting.  I used scrap UHMW pieces to fabricate a mount from the existing holes in the side of the z assembly to the pipe flange.  Both sides are held in place with drilled tapped holes in the pipe flange and 4/40 set screws.
@@ -320,9 +320,9 @@ This section needs a lot of work, but the mantra is commit early, commit often!
 
 My original plan was to create the microcode to process G-Code like a normal CNC Mill.  The Java program was just to show the machine status.  The more I worked with the G-Code the more I thought it was a lot easier to deal with in a Java driver program.
 
-Cam.py usage.  – too many steps – too many chances for error – crappy interface.
+Cam.py usage.  -- too many steps -- too many chances for error -- crappy interface.
 
-JTS – woo hoo!
+JTS -- woo hoo!
 
 
 == What would I have done differently ==
