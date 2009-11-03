@@ -1,6 +1,7 @@
 Stuff to do:
 
-   ** (TEST) Abort on brownout reset!
+   ** Eliminate back and forth stupidity for tool changes.
+   ** Allow skipping a tool change ( or doing in a different order )
    ** Direct command entry to firmware
    * Create MilledPolygon to approximate milling of a larger cutout (hole) w/geometry
       * Use an interior buffer to calculate, and optionally rasterize interior

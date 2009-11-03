@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?> 
-<java version="1.5.0_11" class="java.beans.XMLDecoder"> 
+<java version="1.5.0_16" class="java.beans.XMLDecoder"> 
  <object class="com.borzak.cncmill.Tool"> 
   <void property="description"> 
    <string>Purple Drill 0.0256</string> 
@@ -10,10 +10,13 @@
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
   <void property="description"> 
-   <string>Black Drill 0.0625</string> 
+   <string>Red Drill 0.0310</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>15</int> 
   </void> 
   <void property="stepDiameter"> 
-   <int>15</int> 
+   <int>7</int> 
   </void> 
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
@@ -34,21 +37,29 @@
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
   <void property="description"> 
-   <string>.020 30 deg Engraving Bit</string> 
+   <string>Black Drill 0.0625</string> 
   </void> 
   <void property="stepDiameter"> 
-   <int>4</int> 
+   <int>15</int> 
   </void> 
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
   <void property="description"> 
-   <string>EndMill 3/32&quot; (.09375)</string> 
+   <string>5mm Drill (.196)</string> 
   </void> 
   <void property="maxDepth"> 
-   <int>5</int> 
+   <int>30</int> 
   </void> 
   <void property="stepDiameter"> 
-   <int>22</int> 
+   <int>47</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>.020 30 deg Engraving Bit</string> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>4</int> 
   </void> 
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
@@ -75,34 +86,24 @@
  </object> 
  <object class="com.borzak.cncmill.Tool"> 
   <void property="description"> 
-   <string>Red Drill 0.0310</string> 
+   <string>EndMill 3/32&quot; (.09375)</string> 
+  </void> 
+  <void property="maxDepth"> 
+   <int>5</int> 
+  </void> 
+  <void property="stepDiameter"> 
+   <int>22</int> 
+  </void> 
+ </object> 
+ <object class="com.borzak.cncmill.Tool"> 
+  <void property="description"> 
+   <string>Drill .125</string> 
   </void> 
   <void property="maxDepth"> 
    <int>15</int> 
   </void> 
   <void property="stepDiameter"> 
-   <int>7</int> 
-  </void> 
- </object> 
- <object class="com.borzak.cncmill.Tool"> 
-  <void property="description"> 
-   <string></string> 
-  </void> 
- </object> 
- <object class="com.borzak.cncmill.Tool"> 
-  <void property="description"> 
-   <string>5mm Drill (.196)</string> 
-  </void> 
-  <void property="maxDepth"> 
    <int>30</int> 
-  </void> 
-  <void property="stepDiameter"> 
-   <int>47</int> 
-  </void> 
- </object> 
- <object class="com.borzak.cncmill.Tool"> 
-  <void property="description"> 
-   <string></string> 
   </void> 
  </object> 
 </java> 
