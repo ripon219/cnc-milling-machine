@@ -930,7 +930,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			private static final long serialVersionUID = 1L;
 
 			public void actionPerformed(ActionEvent evt) {
-				String s = "GUI Version: 1.2\n";
+				String s = "GUI Version: 1.3\n";
 				s = s+"Firmware Version: "+mill.getFirmwareVersion();
 				JOptionPane.showMessageDialog(null,s,"About Vince's Milling Machine GUI",JOptionPane.PLAIN_MESSAGE);
 			}
@@ -1423,6 +1423,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 							Pattern.compile("\\s*G71"), // 12 = Millimeter Mode
 							Pattern.compile("\\s*G36"), // 13 = Start Polygon mode
 							Pattern.compile("\\s*G37"), // 14 = End Polygon mode
+							Pattern.compile("\\s*G00X(-?[0-9]+)Y(-?[0-9]+)(D[0-9]+)"), // 15 = Rapid Movement
 							
 							
 							Pattern.compile(".*") // LAST (DEFAULT) = Matches anything (unrecognized)
@@ -1545,6 +1546,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 									
 								case 10:  // G01X000000Y000000D01 - Linear Interpolation
+								case 15:  // G00X000000Y000000D01 - Rapid Movement
 									// "G01X([0-9]+)Y([0-9]+)(D[0-9]+)"
 									int xpos = Integer.parseInt(m.group(1));
 									int ypos =Integer.parseInt(m.group(2));
@@ -1629,6 +1631,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 									}
 									polygonMode = false;
 									break;
+
 									
 								default:
 									if (block.toString().trim().length() == 0) break; // empty = no message
@@ -1684,6 +1687,8 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		int xstart = mill.getXLocation();
 		int ystart = mill.getYLocation();
 		MillingAction action = null;
+		int xoffset = props.getX();
+		int yoffset = props.getY();
 
 		Tool newTool = new Tool(Tool.DRILL,0.0256);
 
@@ -1782,6 +1787,9 @@ M30
 					double ydbl = ((double) ypos) / 10000.0D;
 					xpos = (int) (xdbl * factor);
 					ypos = (int) (ydbl * factor);
+					
+					xpos += xoffset;
+					ypos += yoffset;
 					
 					lastx = xpos;
 					lasty = ypos;
