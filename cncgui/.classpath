@@ -2,13 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path=""/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Simple Serial"/>
-	<classpathentry kind="lib" path="/Java Communications API/comm.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/commons-logging-1.1.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/acme.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/JTS_Test.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/jts-1.8.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/jtsio-1.8.jar"/>
-	<classpathentry kind="lib" path="/Workspace Extensions/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/acme.jar"/>
+	<classpathentry kind="lib" path="lib/comm.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.1.jar"/>
+	<classpathentry kind="lib" path="lib/JTS_Test.jar"/>
+	<classpathentry kind="lib" path="lib/jts-1.8.jar"/>
+	<classpathentry kind="lib" path="lib/jtsio-1.8.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
 	<classpathentry kind="output" path=""/>
 </classpath>
