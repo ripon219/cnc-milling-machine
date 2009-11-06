@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path=""/>
+	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/acme.jar"/>
 	<classpathentry kind="lib" path="lib/comm.jar"/>
 	<classpathentry kind="lib" path="lib/commons-logging-1.1.jar"/>
-	<classpathentry kind="lib" path="lib/JTS_Test.jar"/>
 	<classpathentry kind="lib" path="lib/jts-1.8.jar"/>
 	<classpathentry kind="lib" path="lib/jtsio-1.8.jar"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
-	<classpathentry kind="output" path=""/>
+	<classpathentry kind="output" path="bin"/>
 </classpath>

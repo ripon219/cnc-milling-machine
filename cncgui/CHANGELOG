@@ -1,4 +1,5 @@
 Version 1.3
+    - create a builder and installer script
 	- Add handling of G00 Rapid move command
 	- Fixed handling of x and y offsets on Gerber file load 
 	
