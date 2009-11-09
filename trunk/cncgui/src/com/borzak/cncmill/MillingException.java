@@ -16,6 +16,7 @@ public class MillingException extends RuntimeException {
 	public static final int NOT_IMPLEMENTED = 4;
 	public static final int SOFT_LIMIT = 5;
 	public static final int BROWNOUT_ERROR = 6;
+	public static final int COMM_FAILURE = 7;
 
 	private int reason = UNKNOWN;
 
@@ -26,7 +27,8 @@ public class MillingException extends RuntimeException {
 		"Invalid Command - probably communications error",
 		"Command not implemented - old firmware or communications error",
 		"Software Location Limit Exceeded: ",
-		"Hardware Brownout Reset"};
+		"Hardware Brownout Reset",
+		"Communications failure"};
 	
 	private String response = null;
 

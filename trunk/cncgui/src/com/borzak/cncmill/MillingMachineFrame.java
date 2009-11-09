@@ -29,7 +29,7 @@ import org.apache.log4j.lf5.viewer.*;
 public class MillingMachineFrame extends JFrame implements Runnable {
 	private static Log log = LogFactory.getLog(MillingMachineFrame.class);
 	
-	MillingMachine mill = new MillingMachine();
+	MillingMachine mill = null;
 	MillingMachineFrame frame = this;
 	MillingPropertiesDialog propDialog;
 	private JTextField xGotoTF;
@@ -271,11 +271,11 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 	public static void main(String[] args) {
 		MillingMachineFrame frame = null;
-		if ( (args.length > 0) && args[0].equals("-s")) {
-			frame = new MillingMachineFrame(true);
+		if (args.length > 0) {
+			frame = new MillingMachineFrame(args[0]);
 //			frame.mill.setSimulateDelay(1000);
 		} else {
-			frame = new MillingMachineFrame(false);
+			frame = new MillingMachineFrame(null);
 		}
 
 		frame.initialDisplay();
@@ -299,15 +299,11 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 	}
 
 	public MillingMachineFrame() {
-		this(false);
+		this(null);
 	}
 	
-	public MillingMachineFrame(boolean simulating) {
+	public MillingMachineFrame(String portname) {
 		super();
-
-		mill.SetSimulating(simulating);
-		
-		propDialog = new MillingPropertiesDialog(mill.getProperties());
 
 		Logger rootLogger = Logger.getRootLogger();
 		LF5Appender lf5a = new LF5Appender();
@@ -318,6 +314,14 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		monitor.setTitle("Milling Machine Log");
 		monitor.getBaseFrame().setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 
+		mill = new MillingMachine();
+		if (portname != null) {
+			mill.setPortname(portname);
+		}
+		
+		propDialog = new MillingPropertiesDialog(mill.getProperties());
+		
+		
 		boolean showError = false;
 		boolean tempCalibrateToValue = false;
 		try {
@@ -325,7 +329,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		} catch (Exception e1) {
 			// if the call fails, switch to simulation mode
 			log.error("Failed to get firmware version",e1);
-			mill.SetSimulating(true);
+			mill.setSimulating(true);
 			showError = true;
 		}
 
@@ -942,7 +946,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 			private static final long serialVersionUID = 1L;
 
 			public void actionPerformed(ActionEvent evt) {
-				String s = "GUI Version: 1.3\n";
+				String s = "GUI Version: 1.4\n";
 				s = s+"Firmware Version: "+mill.getFirmwareVersion();
 				JOptionPane.showMessageDialog(null,s,"About Vince's Milling Machine GUI",JOptionPane.PLAIN_MESSAGE);
 			}
@@ -1227,7 +1231,7 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 					boolean drillstate = mill.isDrillRelay();
 					mill.readStatus();
 					MillLocation currentLoc = mill.getLocation();
-					mill.moveTo(-9999,-9999,mill.getProperties().getZSafe());
+					mill.moveTo(-9999,-9999,mill.getProperties().getZsafe());
 					mill.setDrillRelay(false); // turn the drill off
 					mill.setVacuumRelay(false); // turn the vacuum off
 					startStopAction.setState(StartStopAction.STATE_RESUME);

@@ -1,3 +1,4 @@
 @ECHO OFF
 set JARPATH=%~dp0
-start javaw -jar "%JARPATH%\lib\cncgui.jar" 
+cd "%JARPATH%"
+start javaw -Djava.library.path=lib\ -jar lib\cncgui.jar 

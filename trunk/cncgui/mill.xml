@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?> 
-<java version="1.5.0_11" class="java.beans.XMLDecoder"> 
+<java version="1.6.0_16" class="java.beans.XMLDecoder"> 
  <object class="com.borzak.cncmill.MillingProperties"> 
   <void property="coolDownSecs"> 
    <int>600</int> 
-  </void> 
-  <void property="showVertices"> 
-   <boolean>false</boolean> 
   </void> 
  </object> 
 </java> 

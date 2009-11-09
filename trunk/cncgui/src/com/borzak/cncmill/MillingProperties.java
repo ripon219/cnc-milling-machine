@@ -18,17 +18,76 @@ import org.apache.commons.logging.*;
  * @author Vincent Greene
  */
 public class MillingProperties implements Serializable {
+	private static final long serialVersionUID = -6038219633428497785L;
+
 	private static Log log = LogFactory.getLog(MillingProperties.class);
 
-	int zSafe = -10;
-	boolean showVertices = true;
-	boolean coolDown = true;
-	int maxCutTimeSecs = 300; /* five minutes */
-	int coolDownSecs = 300; /* five minutes */
+	public int zsafe = -10;
+	public boolean showVertices = false;
+	public boolean coolDown = true;
+	public int maxCutTimeSecs = 300; /* five minutes */
+	public int coolDownSecs = 300; /* five minutes */
+	public String portname = null;
+	transient private PropertyChangeSupport changeSupport = new PropertyChangeSupport(this);
 	
 	
+	public void addPropertyChangeListener(PropertyChangeListener listener) {
+		changeSupport.addPropertyChangeListener(listener);
+	}
+
+	public void addPropertyChangeListener(String propertyName,
+			PropertyChangeListener listener) {
+		changeSupport.addPropertyChangeListener(propertyName, listener);
+	}
+
+	public void firePropertyChange(PropertyChangeEvent evt) {
+		changeSupport.firePropertyChange(evt);
+	}
+
+	public void removePropertyChangeListener(PropertyChangeListener listener) {
+		changeSupport.removePropertyChangeListener(listener);
+	}
+
+	public void removePropertyChangeListener(String propertyName,
+			PropertyChangeListener listener) {
+		changeSupport.removePropertyChangeListener(propertyName, listener);
+	}
+
+	public String getPortname() {
+		// Default the port name based on OS
+		if (portname == null) {
+			String osname = System.getProperty("os.name","WTF");
+			log.debug("Operating System is: "+osname);
+			if (osname.toLowerCase().startsWith("linux")) {
+				portname = "/dev/ttyS0";
+			}
+			if (osname.toLowerCase().startsWith("windows")) {
+				portname = "COM1";
+			}
+		}
+		return portname;
+	}
+
+	public void setPortname(String portname) {
+		String oldvalue = this.portname;
+		this.portname = portname;
+		if (portname != null && !portname.equals(oldvalue)) {
+			firePropertyChange(new PropertyChangeEvent(this, "portname", oldvalue, portname));
+		}
+	}
+
 	public MillingProperties() {
 		super();
+	}
+	
+	
+	public void setDefaults() {
+		// Default the port name based on OS
+		String osname = System.getProperty("os.name","WTF");
+		log.debug("Operating System is: "+osname);
+		if (osname.toLowerCase().startsWith("linux")) {
+			portname = "/dev/tts/1";
+		}
 	}
 	
 	public void save() {
@@ -58,6 +117,14 @@ public class MillingProperties implements Serializable {
 		
 	}
 	
+
+	public int getZsafe() {
+		return zsafe;
+	}
+
+	public void setZsafe(int zSafe) {
+		this.zsafe = zSafe;
+	}
 
 	public void load() {
 		FileInputStream fis = null;
@@ -98,11 +165,12 @@ public class MillingProperties implements Serializable {
 	 * @param newProps The one to copy
 	 */
 	public void copyFrom(MillingProperties newProps) {
-		this.zSafe = newProps.zSafe;
+		this.zsafe = newProps.zsafe;
 		this.showVertices = newProps.showVertices;
 		this.coolDown = newProps.coolDown;
 		this.maxCutTimeSecs = newProps.maxCutTimeSecs; 
 		this.coolDownSecs = newProps.coolDownSecs; 
+		setPortname(portname);
 }
 
 	public boolean isCoolDown() {
@@ -142,16 +210,6 @@ public class MillingProperties implements Serializable {
 
 	public void setShowVertices(boolean showVertices) {
 		this.showVertices = showVertices;
-	}
-
-
-	public int getZSafe() {
-		return zSafe;
-	}
-
-
-	public void setZSafe(int safe) {
-		zSafe = safe;
 	}
 	
 	

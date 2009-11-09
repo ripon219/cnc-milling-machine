@@ -4,15 +4,16 @@
  */
 package com.borzak.cncmill;
 
+import gnu.io.*;
+
 import java.beans.*;
 import java.io.*;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.regex.*;
 
-import javax.comm.*;
-
 import org.apache.commons.logging.*;
-
-import com.sun.org.apache.xerces.internal.impl.xs.*;
 
 public class MillingMachine {
 	private static Log log = LogFactory.getLog(MillingMachine.class);
@@ -67,6 +68,25 @@ public class MillingMachine {
 	
 	MillingProperties properties = new MillingProperties();
 
+	private String portname = "COM1";
+
+	public String getPortname() {
+		return portname;
+	}
+
+	public void setPortname(String portname) {
+		closePort();
+		this.portname = portname;
+		if (portname != null && 
+				(portname.equalsIgnoreCase("simulate") ||
+				 portname.equalsIgnoreCase("-s"))) {
+			setSimulating(true);
+		} else {
+			setSimulating(false);
+		}
+		readStatus(); // update specs for current port
+	}
+
 	public MillingMachine() {
 		// Create with machine limits assuming x,y at center and z touching material at zero
 //		this(-1271,1271,-939,939, -705, 47);
@@ -82,6 +102,17 @@ public class MillingMachine {
 		this.zMin = zMin;
 		this.zMax = zMax;
 		properties.load();
+		setPortname(properties.getPortname());
+		// Watch for changes in the portname and handle appropriately
+		properties.addPropertyChangeListener("portname", new PropertyChangeListener() {
+			
+			/**
+			 * Close port if the port name is changed.
+			 */
+			public void propertyChange(PropertyChangeEvent evt) {
+				setPortname((String) evt.getNewValue());
+			}
+		});
 	}
 
 	
@@ -561,7 +592,12 @@ private String processCommand(String command) throws RuntimeException {
 	} else {
 		try {
 			// Do the real thing
-			openPort();
+			try {
+				openPort();
+			} catch (Exception e) {
+				log.debug("could not open port!",e);
+				throw new MillingException("Failed to open port!",MillingException.COMM_FAILURE);
+			}
 			// Send the command
 			log.debug("Sent: "+command);
 			portPrinter.print(command+"\n\r");
@@ -636,10 +672,14 @@ private void clearLimits() {
  */
 private void openPort() throws NoSuchPortException, PortInUseException, UnsupportedCommOperationException, IOException {
 	if (port != null) return; // already done it.
-	CommPortIdentifier cpi = CommPortIdentifier.getPortIdentifier("COM1");
+	
+	log.debug("Opening port "+portname+" (on windows this will take a while...)");
+	CommPortIdentifier cpi = CommPortIdentifier.getPortIdentifier(portname);
 	CommPort cp = cpi.open("MillingMachine",1000);
+	log.debug("Port is open");
 	if (cp instanceof SerialPort) {
 	    port = (SerialPort)cp;
+		log.debug("Setting Serial Port parms");
 		port.setSerialPortParams(19200, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
 	    port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
 
@@ -648,12 +688,17 @@ private void openPort() throws NoSuchPortException, PortInUseException, Unsuppor
 		portInBuffer = new BufferedReader(portReader);
 		OutputStream out = port.getOutputStream();
 	    portPrinter = new PrintWriter(out);
+	} else {
+		log.error("Uh Oh! The post was not a SerialPort");
+		throw new RuntimeException("Uh Oh! The post was not a SerialPort");
 	}
 }
 
 private void closePort() {
 
-	portPrinter.close();
+	if (portPrinter != null) {
+		portPrinter.close();
+	}
 	
 	try {
 		if (portInBuffer != null) {
@@ -674,6 +719,7 @@ private void closePort() {
 	try {
 		if (port != null) {
 			port.close();
+			port=null;
 		}
 	} catch (Exception e) {
 		log.error("Error closing port", e);
@@ -893,7 +939,7 @@ public MillLocation getLocation() {
 	return new MillLocation(xLocation, yLocation, zLocation);
 }
 
-public void SetSimulating(boolean b) {
+public void setSimulating(boolean b) {
 	simulating = b;
 }
 
@@ -927,7 +973,7 @@ public MillingProperties getProperties() {
 }
 
 public int getZSafe() {
-	return properties.getZSafe();
+	return properties.getZsafe();
 }
 
 

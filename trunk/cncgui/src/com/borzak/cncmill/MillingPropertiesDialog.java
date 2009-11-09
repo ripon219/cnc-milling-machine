@@ -19,6 +19,7 @@ public class MillingPropertiesDialog extends JDialog {
 	
 	MillingProperties properties = null;
 	
+	JTextField tfPortname = new JTextField("COM1");
 	JTextField tfZSafe = new JTextField("-10");
 	JCheckBox cbShowVerticesCheckbox = new JCheckBox("Show Vertices?");
 	JCheckBox cbCoolDown = new JCheckBox("Cool Down?");
@@ -38,6 +39,10 @@ public class MillingPropertiesDialog extends JDialog {
 
 		JPanel centerPanel = new JPanel();
 		centerPanel.setLayout(new GridLayout(0,2));
+		
+		centerPanel.add(new JLabel("Communications Port"));
+		centerPanel.add(tfPortname);
+
 		centerPanel.add(new JLabel("Z-Axis Safe Height"));
 		centerPanel.add(tfZSafe);
 		
@@ -122,11 +127,12 @@ public class MillingPropertiesDialog extends JDialog {
 
 	private void loadToFields() {
 		try {
+			tfPortname.setText(properties.getPortname());
 			cbCoolDown.setSelected(properties.isCoolDown());
 			tfCoolDownSecs.setText(""+properties.getCoolDownSecs());
 			tfMaxCutTimeSecs.setText(""+properties.getMaxCutTimeSecs());
 			cbShowVerticesCheckbox.setSelected(properties.isShowVertices());
-			tfZSafe.setText(""+properties.getZSafe());
+			tfZSafe.setText(""+properties.getZsafe());
 		} catch (RuntimeException e) {
 			log.error("in MillingPropertiesDialog.loadToFields", e);
 		}
@@ -135,11 +141,12 @@ public class MillingPropertiesDialog extends JDialog {
 
 	private void loadFromFields() {
 		try {
+			properties.setPortname(tfPortname.getText());
 			properties.setCoolDown(cbCoolDown.isSelected());
 			properties.setCoolDownSecs(Integer.parseInt(tfCoolDownSecs.getText()));
 			properties.setMaxCutTimeSecs(Integer.parseInt(tfMaxCutTimeSecs.getText()));
 			properties.setShowVertices(cbShowVerticesCheckbox.isSelected());
-			properties.setZSafe(Integer.parseInt(tfZSafe.getText()));
+			properties.setZsafe(Integer.parseInt(tfZSafe.getText()));
 		} catch (NumberFormatException e) {
 			log.error("in MillingPropertiesDialog.loadFromFields", e);
 		}
