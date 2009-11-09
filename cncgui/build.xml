@@ -7,26 +7,37 @@
 	<!-- Allows us to use the IzPack Ant task -->
 	<taskdef name="IzPack" classpath="build/lib/standalone-compiler.jar"
 	         classname="com.izforge.izpack.ant.IzPackTask"/>
-	
+
+	<property name="libdir" location="lib/" />
+
+	<pathconvert property="manifest-classpath" pathsep=" " dirsep="/">
+		<path id="cp">
+			<fileset id="jars" dir="${libdir}">
+				<include name="*.jar" />
+			</fileset>
+		</path>
+		<flattenmapper/>
+	</pathconvert>
 	
 	<target name="init">
 		<tstamp/>
 	</target>
 
-<!-- Build the standalone jar files -->
+
+	<!-- Build the standalone jar files -->
 	<target name="jar" depends="init">
 		<jar destfile="dist/cncgui.jar" basedir="bin">
-            <manifest>
-                <attribute name="Built-By" value="tucsonclimber"/>
-                <attribute name="Class-Path" value="acme.jar comm.jar commons-logging-1.1.jar jts-1.8.jar jtsio-1.8.jar log4j-1.2.15.jar"/>
-                <attribute name="Main-Class" value="com.borzak.cncmill.MillingMachineFrame"/>
-            </manifest>
+			<manifest>
+				<attribute name="Built-By" value="tucsonclimber"/>
+				<attribute name="Class-Path" value="${manifest-classpath}"/>
+				<attribute name="Main-Class" value="com.borzak.cncmill.MillingMachineFrame"/>
+			</manifest>
 
 		</jar>
 	</target>
 
 	<target name="installer" depends="jar">
-	<!-- Use IzPack to create an installer -->
+		<!-- Use IzPack to create an installer -->
 		<echo message="Makes the installer using IzPack"/>
 		<IzPack input="build/conf/install.xml"
 		        output="dist/cncmill-install.jar"
@@ -34,5 +45,5 @@
 		        basedir="."/>
 	</target>
 
-	
+
 </project>
