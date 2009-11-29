@@ -8,9 +8,7 @@ import gnu.io.*;
 
 import java.beans.*;
 import java.io.*;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Iterator;
+import java.net.*;
 import java.util.regex.*;
 
 import org.apache.commons.logging.*;
@@ -58,6 +56,8 @@ public class MillingMachine {
 	
 	private Tool currentTool = null;
 
+	private boolean connected = false;
+	private Socket socket;
 	private SerialPort port;
 	private Reader portReader;
 	private BufferedReader portInBuffer;
@@ -75,16 +75,23 @@ public class MillingMachine {
 	}
 
 	public void setPortname(String portname) {
+		boolean wasConnected = connected;
+		String oldportname = this.portname;
 		closePort();
 		this.portname = portname;
 		if (portname != null && 
 				(portname.equalsIgnoreCase("simulate") ||
 				 portname.equalsIgnoreCase("-s"))) {
 			setSimulating(true);
+			connected=true;
 		} else {
 			setSimulating(false);
 		}
-		readStatus(); // update specs for current port
+		if (wasConnected) {
+			// update the status when switching port unless it was not connected to begin with
+			readStatus(); // update specs for current port
+		} 
+		firePropertyChange("portname", oldportname, portname);
 	}
 
 	public MillingMachine() {
@@ -518,6 +525,8 @@ public void readStatus() {
 				}
 			}
 		}
+		MillLocation location = getLocation();
+		firePropertyChange("location", location, location);
 	} catch (Exception e) {
 		log.error("in MillingMachine.readStatus", e);
 	} finally {
@@ -671,27 +680,53 @@ private void clearLimits() {
  * @throws IOException 
  */
 private void openPort() throws NoSuchPortException, PortInUseException, UnsupportedCommOperationException, IOException {
-	if (port != null) return; // already done it.
+	if (connected) return; // its already connected
 	
-	log.debug("Opening port "+portname+" (on windows this will take a while...)");
-	CommPortIdentifier cpi = CommPortIdentifier.getPortIdentifier(portname);
-	CommPort cp = cpi.open("MillingMachine",1000);
-	log.debug("Port is open");
-	if (cp instanceof SerialPort) {
-	    port = (SerialPort)cp;
-		log.debug("Setting Serial Port parms");
-		port.setSerialPortParams(19200, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
-	    port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+	Pattern pattern = Pattern.compile("^tcp:([^/]+):([0-9]{1,5})");
+	Matcher matcher = pattern.matcher(portname);
+	
+	if (matcher.matches()) {
+		port = null;
+		socket = null;
+		// its a valid tcp portname so extract the address and port
+		String host = matcher.group(1);
+		int portnumber = Integer.parseInt(matcher.group(2));
+		log.info("Opening TCP/IP connection to "+host+":"+portnumber);
+		Socket socket = new Socket(host,portnumber);
+		socket.setKeepAlive(true);
 
-	    InputStream in = port.getInputStream();
+		InputStream in = socket.getInputStream();
 	    portReader = new InputStreamReader(in);
 		portInBuffer = new BufferedReader(portReader);
-		OutputStream out = port.getOutputStream();
+		OutputStream out = socket.getOutputStream();
 	    portPrinter = new PrintWriter(out);
+	    connected = true;
+		log.info("Connection succeeded");
 	} else {
-		log.error("Uh Oh! The post was not a SerialPort");
-		throw new RuntimeException("Uh Oh! The post was not a SerialPort");
+		port = null;
+		socket = null;
+		log.debug("Opening port "+portname+" (on windows this will take a while...)");
+		CommPortIdentifier cpi = CommPortIdentifier.getPortIdentifier(portname);
+		CommPort cp = cpi.open("MillingMachine",1000);
+		log.debug("Port is open");
+		if (cp instanceof SerialPort) {
+		    port = (SerialPort)cp;
+			log.debug("Setting Serial Port parms");
+			port.setSerialPortParams(19200, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+		    port.setFlowControlMode(SerialPort.FLOWCONTROL_NONE);
+	
+		    InputStream in = port.getInputStream();
+		    portReader = new InputStreamReader(in);
+			portInBuffer = new BufferedReader(portReader);
+			OutputStream out = port.getOutputStream();
+		    portPrinter = new PrintWriter(out);
+		    connected = true;
+		} else {
+			log.error("Uh Oh! The post was not a SerialPort");
+			throw new RuntimeException("Uh Oh! The post was not a SerialPort");
+		}
 	}
+	firePropertyChange("connected", false, true);
 }
 
 private void closePort() {
@@ -721,17 +756,16 @@ private void closePort() {
 			port.close();
 			port=null;
 		}
+		if (socket != null) {
+			socket.close();
+			socket = null;
+		}
 	} catch (Exception e) {
 		log.error("Error closing port", e);
 	}
+	connected = false;
+	firePropertyChange("connected", true, false);
 }
-
-public static void main(String[] args) {
-	MillingMachine mill = new MillingMachine();
-	mill.readStatus();
-	
-}
-
 
 public boolean isDrillRelay() {
 	return drillRelay;
@@ -940,7 +974,9 @@ public MillLocation getLocation() {
 }
 
 public void setSimulating(boolean b) {
+	boolean oldValue = simulating;
 	simulating = b;
+	firePropertyChange("simulating", oldValue, b);
 }
 
 public boolean getSimulating() {
@@ -974,6 +1010,10 @@ public MillingProperties getProperties() {
 
 public int getZSafe() {
 	return properties.getZsafe();
+}
+
+public boolean isConnected() {
+	return connected;
 }
 
 
