@@ -318,6 +318,29 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 		if (portname != null) {
 			mill.setPortname(portname);
 		}
+
+		// Set the starting title, then register a listener to deal with changes 
+		setTitle("Milling Machine Controller");
+		
+		mill.addPropertyChangeListener(new PropertyChangeListener() {
+
+			public void propertyChange(PropertyChangeEvent evt) {
+				String propName = evt.getPropertyName();
+				if (propName.equals("connected") ||
+						propName.equals("simulating") ||
+						propName.equals("portName")) {
+					String newTitle = "Milling Machine Controller-";
+					if (mill.getSimulating()) {
+						newTitle += "Simulating";
+					} else {
+						newTitle += mill.getPortname()+" "
+							+(mill.isConnected() ? "Connected":"Disconnected");
+					}
+					setTitle(newTitle);
+					refreshFromMill();
+				}
+				
+			}});
 		
 		propDialog = new MillingPropertiesDialog(mill.getProperties());
 		
@@ -335,8 +358,6 @@ public class MillingMachineFrame extends JFrame implements Runnable {
 
 		final boolean calibrateToValue = tempCalibrateToValue;
 		
-		setTitle("Milling Machine Controller"+(mill.getSimulating()?"-Simulating":""));
-
 		Container content = getContentPane();
 		content.setLayout(new BorderLayout());
 
@@ -1982,6 +2003,7 @@ M30
 	 * 
 	 */
 	private void refreshFromMill() {
+		if (xMillPos == null) return; // bypass error if gui not initialized
 		xMillPos.setText(""+mill.getXLocation());
 		yMillPos.setText(""+mill.getYLocation());
 		zMillPos.setText(""+mill.getZLocation());
