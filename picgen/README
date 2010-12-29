@@ -1,0 +1,11 @@
+This directory contains the source and generated HEX files for the 
+PICGen Function Generator and Frequency Counter originally printed in
+the July 2000 issue of Everyday Practical Electronics magazine (EPE).
+
+This version of the code was converted in syntax from the TASM assembler 
+to the Microchip provided assembler, and the code has slight modifications
+to work with a 2 line display.
+
+For more project details, see the original EPE article, and my blog at:
+http://vinces-electronics.blogspot.com/2008/11/project-function-generator-and.html
+

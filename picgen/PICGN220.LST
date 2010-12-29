@@ -1,0 +1,1272 @@
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                    00001 ; CONVERTED TASM PIC16F877 PICGN220.ASM TO MPASM PICGN220_M.ASM 11-27-2002 10:46:10
+                    00002 
+                    00003                 list p=PIC16F877,r=dec
+                    00004                                         ;PICGN220.ASM 21APR00 - JOHN BECKER - EPE PIC FUNCTION GEN + FREQ 
+                          COUNT
+                    00005                  
+                    00006                                         ;PIC16F877-4, 3.2768Hz, WDT OFF, POR ON, XTAL XT
+2007 3F31           00007                 __CONFIG H'3F31'                 
+                    00008                                         ;Config register bits (all PIC TOOLKIT MK2 defaults)
+                    00009                                         ; CP1 CP0 DBG NIL WRT CPD LVP BOR CP1 CP0 POR WDT OS1 OS0
+                    00010                                         ;  1   1   1   1   1   1   0   0   1   1   0   0   0   1
+                    00011                                         ;N.B. Logic 1/0 do NOT necessarily mean that the function is On/Of
+                          f
+                    00012                                         ;respectively - refer to PIC '87 data sheet.
+                    00013                  
+                    00014 #DEFINE         PAGE0 BCF STATUS,RP0
+                    00015 #DEFINE         PAGE1 BSF STATUS,RP0
+                    00016                  
+  00000000          00017 INDF            EQU H'00'               ;page 0, 1, 2, 3
+  00000001          00018 TMR0            EQU H'01'               ;page 0, 2
+  00000001          00019 OPSHUN          EQU H'01'               ;page 1, 3
+  00000002          00020 PCL             EQU H'02'               ;page 0, 1, 2, 3
+  00000003          00021 STATUS          EQU H'03'               ;page 0, 1, 2, 3
+  00000004          00022 FSR             EQU H'04'               ;page 0, 1, 2, 3
+                    00023                  
+  00000005          00024 PORTA           EQU H'05'               ;page 0
+  00000005          00025 TRISA           EQU H'05'               ;page 1
+  00000006          00026 PORTB           EQU H'06'               ;page 0, 2
+  00000006          00027 TRISB           EQU H'06'               ;page 1, 3
+  00000007          00028 PORTC           EQU H'07'               ;page 0
+  00000007          00029 TRISC           EQU H'07'               ;page 1
+  00000008          00030 PORTD           EQU H'08'               ;page 0
+  00000008          00031 TRISD           EQU H'08'               ;page 1
+  00000009          00032 PORTE           EQU H'09'               ;page 0
+  00000009          00033 TRISE           EQU H'09'               ;page 1
+                    00034                  
+  0000000B          00035 INTCON          EQU H'0B'               ;page 0, 1, 2, 3
+  0000001F          00036 ADCON0          EQU H'1F'               ;page 0
+  0000001F          00037 ADCON1          EQU H'1F'               ;page 1
+                    00038                  
+  00000020          00039 LOOPA           EQU H'20'               ;loop used by LCD send routine
+  00000021          00040 LOOPB           EQU H'21'               ;general loop
+  00000022          00041 STORE           EQU H'22'               ;general store
+  00000023          00042 STORE1          EQU H'23'               ;general store
+  00000024          00043 STORE2          EQU H'24'               ;general store
+  00000025          00044 STORE3          EQU H'25'               ;general store
+  00000026          00045 RSLINE          EQU H'26'               ;LCD function flag store
+  00000027          00046 SWITCH          EQU H'27'               ;switch status store
+  00000028          00047 MARK1           EQU H'28'               ;freq count polarity marker 1
+  00000029          00048 MARK2           EQU H'29'               ;freq count polarity marker 2
+                    00049                  
+  0000002A          00050 DEC1            EQU H'2A'               ;decimalisation byte 1
+  0000002B          00051 DEC2            EQU H'2B'               ; byte 2
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+  0000002C          00052 DEC3            EQU H'2C'               ; byte 3
+  0000002D          00053 DEC4            EQU H'2D'               ; byte 4
+  0000002E          00054 DEC5            EQU H'2E'               ; byte 5
+  0000002F          00055 DEC6            EQU H'2F'               ; byte 6 (dummy)      
+                    00056                  
+  00000030          00057 ANSA1           EQU H'30'               ;decimalisation answer store 1
+  00000031          00058 ANSA2           EQU H'31'               ; answer 2
+  00000032          00059 ANSA3           EQU H'32'               ; answer 3
+  00000033          00060 ANSA4           EQU H'33'               ; answer 4
+  00000034          00061 ANSA5           EQU H'34'               ; answer 5
+                    00062                  
+  00000035          00063 FREQ0           EQU H'35'               ;frequency counter lsb
+  00000036          00064 FREQ1           EQU H'36'               ;frequency counter nsb
+  00000037          00065 FREQ2           EQU H'37'               ;frequency counter nsb
+  00000038          00066 FREQ3           EQU H'38'               ;frequency counter nsb
+  00000039          00067 FREQ4           EQU H'39'               ;frequency counter msb
+  0000003A          00068 CLKCNT          EQU H'3A'               ;timing counter
+  0000003B          00069 SLOWIT          EQU H'3B'               ;delay factor for PAUSE
+  0000003C          00070 LOOPX           EQU H'3C'               ;delay loop for LCDOUT
+                    00071                  
+  0000003D          00072 OUT7            EQU H'3D'               ;8 bytes for freq store and output to LCD
+  0000003E          00073 OUT6            EQU H'3E'
+  0000003F          00074 OUT5            EQU H'3F'
+  00000040          00075 OUT4            EQU H'40'
+  00000041          00076 OUT3            EQU H'41'
+  00000042          00077 OUT2            EQU H'42'
+  00000043          00078 OUT1            EQU H'43'
+  00000044          00079 OUT0            EQU H'44'
+  00000045          00080 LCDSTOR1        EQU H'45'
+  00000046          00081 LCDSTOR2        EQU H'46'
+  00000047          00082 STOREC          EQU H'47'
+  00000048          00083 STORED          EQU H'48'
+  00000049          00084 TENFLG          EQU H'49'
+  0000004A          00085 TENCNT          EQU H'4A'
+  0000004B          00086 RANGE           EQU H'4B'               ;frequency cap selection
+  0000004C          00087 SHAPE           EQU H'4C'               ;waveform shape selection
+  0000004D          00088 SAMPLE          EQU H'4D'               ;1sec/10sec flag
+  0000004E          00089 CLKVAL1         EQU H'4E'
+  0000004F          00090 CLKVAL2         EQU H'4F'
+                    00091                  
+                    00092                                         ;extends to $7F (max limit)
+                    00093                  
+  00000000          00094 W               EQU 0
+  00000001          00095 F               EQU 1
+  00000000          00096 C               EQU 0
+  00000001          00097 DC              EQU 1
+  00000002          00098 Z               EQU 2
+                    00099                  
+  00000005          00100 RP0             EQU 5                   ;STATUS reg
+  00000006          00101 RP1             EQU 6                   ;STATUS reg
+  00000007          00102 GIE             EQU 7                   ;INTCON reg
+                    00103 
+0000                00104                 ORG H'0000'             ; Reset vector
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0000 2805           00105                 goto RESET
+                    00106                  
+                    00107                  
+0004                00108                 ORG H'0004'             ;Interrupt vector address
+0004 2853           00109                 goto START              ;Jump to interrupt routine on interrupt
+0005                00110                 ORG H'0005'             ;Start of program memory
+                    00111 
+                    00112                  
+0005 018B           00113 RESET           clrf INTCON
+                    00114                  
+0006 138B           00115 GIEOFF          bcf INTCON,GIE          ;turn off global interrupts
+0007 1B8B           00116                 btfsc INTCON,GIE
+0008 2806           00117                 goto GIEOFF
+                    00118                  
+0009 2853           00119                 goto START
+                    00120                  
+000A 0782           00121 TABLCD          addwf PCL,F             ;LCD initialisation table
+000B 3433           00122                 retlw B'00110011'       ;initialise lcd - first byte
+000C 3433           00123                 retlw B'00110011'       ;2nd byte (repeat of first)
+000D 3432           00124                 retlw B'00110010'       ;set for 4-bit operation
+                    00125 ;;;;                retlw B'00100100'       ;set for 1 line
+000E 342C           00126                 retlw B'00101100'       ;set for 2 lines
+000F 3406           00127                 retlw B'00000110'       ;set entry mode to increment each address
+0010 340C           00128                 retlw B'00001100'       ;set display on, cursor off, blink off
+0011 3401           00129                 retlw B'00000001'       ;clear display
+0012 3402           00130                 retlw B'00000010'       ;return home, cursor & RAM to zero
+                    00131                                         ;end initialisation table
+                    00132                  
+0013                00133 TBDEC1                                  ;table for decimalisation lsb
+0013 0782           00134                 addwf PCL,F             ;add program counter
+0014 3410           00135                 retlw H'10'             ;lsb of 10000
+0015 34E8           00136                 retlw H'E8'             ;lsb of 1000
+0016 3464           00137                 retlw H'64'             ;lsb of 100
+0017 340A           00138                 retlw H'0A'             ;lsb of 10
+                    00139                  
+0018                00140 TBDEC2                                  ;table for decimalisation msb
+0018 0782           00141                 addwf PCL,F             ;add program counter
+0019 3427           00142                 retlw H'27'             ;msb of 10000
+001A 3403           00143                 retlw H'03'             ;msb of 1000
+001B 3400           00144                 retlw 0                 ;msb of 100
+001C 3400           00145                 retlw 0                 ;msb of 10
+                    00146                  
+001D 0782           00147 RANGIT          addwf PCL,F             ;range control vals
+001E 34FF           00148                 retlw B'11111111'
+001F 34FD           00149                 retlw B'11111101'
+0020 34FB           00150                 retlw B'11111011'
+0021 34F7           00151                 retlw B'11110111'
+0022 34EF           00152                 retlw B'11101111'
+0023 34DF           00153                 retlw B'11011111'
+0024 34BF           00154                 retlw B'10111111'
+0025 347F           00155                 retlw B'01111111'
+                    00156 
+0026 0782           00157 WAVEFORM        addwf PCL,F             ;Constant "WaveForm:"
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0027 3457           00158                 retlw 'W'
+0028 3441           00159                 retlw 'A'
+0029 3456           00160                 retlw 'V'
+002A 3445           00161                 retlw 'E'
+002B 3446           00162                 retlw 'F'
+002C 344F           00163                 retlw 'O'
+002D 3452           00164                 retlw 'R'
+002E 344D           00165                 retlw 'M'
+002F 343A           00166                 retlw ':'
+0030 3420           00167                 retlw ' '
+                    00168 
+                    00169                  
+0031 0782           00170 WAVEIT          addwf PCL,F             ;waveform message routing
+0032 283F           00171                 goto SQUARE
+0033 2849           00172                 goto TRNGLE
+0034 2835           00173                 goto SINE
+                    00174                  
+0035 0820           00175 SINE            movf LOOPA,W
+0036 0782           00176                 addwf PCL,F             ;sine message route
+0037 3453           00177                 retlw 'S'
+0038 3449           00178                 retlw 'I'
+0039 344E           00179                 retlw 'N'
+003A 3445           00180                 retlw 'E'
+003B 3420           00181                 retlw ' '
+003C 3420           00182                 retlw ' '
+003D 3420           00183                 retlw ' '
+003E 3420           00184                 retlw ' '
+                    00185                  
+003F 0820           00186 SQUARE          movf LOOPA,W
+0040 0782           00187                 addwf PCL,F             ;square message route
+0041 3453           00188                 retlw 'S'
+0042 3451           00189                 retlw 'Q'
+0043 3455           00190                 retlw 'U'
+0044 3441           00191                 retlw 'A'
+0045 3452           00192                 retlw 'R'
+0046 3445           00193                 retlw 'E'
+0047 3420           00194                 retlw ' '
+0048 3420           00195                 retlw ' '
+                    00196                  
+0049 0820           00197 TRNGLE          movf LOOPA,W
+004A 0782           00198                 addwf PCL,F             ;triangle message route
+004B 3454           00199                 retlw 'T'
+004C 3452           00200                 retlw 'R'
+004D 3449           00201                 retlw 'I'
+004E 3441           00202                 retlw 'A'
+004F 344E           00203                 retlw 'N'
+0050 3447           00204                 retlw 'G'
+0051 344C           00205                 retlw 'L'
+0052 3445           00206                 retlw 'E'
+                    00207                  
+                    00208                                         ;..............
+                    00209                  
+0053 1283           00210 START           bcf STATUS,RP0
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0054 1303           00211                 bcf STATUS,RP1
+0055 0185           00212                 clrf PORTA
+0056 0186           00213                 clrf PORTB
+0057 0187           00214                 clrf PORTC
+0058 0188           00215                 clrf PORTD
+0059 0189           00216                 clrf PORTE
+005A 1683           00217                 PAGE1 
+005B 0185           00218                 clrf TRISA              ;PORTA as output
+005C 303F           00219                 movlw B'00111111'
+005D 0086           00220                 movwf TRISB             ;PORTB as input
+005E 30FF           00221                 movlw 255
+005F 0087           00222                 movwf TRISC             ;PORTC as input
+0060 30CF           00223                 movlw B'11001111'
+0061 0088           00224                 movwf TRISD             ;RD0-RD3, RD6-RD7 as input, RD4-RD5 as output
+0062 3007           00225                 movlw B'00000111'
+0063 0089           00226                 movwf TRISE             ;PORTE as input
+0064 3007           00227                 movlw B'00000111'       ;set LHS justify, RA0-RA3 as digital
+0065 009F           00228                 movwf ADCON1
+0066 3086           00229                 movlw B'10000110'       ;PORTB pullups off, timer 1:128 (1/25th sec)
+0067 0081           00230                 movwf OPSHUN
+0068 1283           00231                 PAGE0 
+                    00232                  
+0069 2140           00233                 call PAUSIT
+006A 01A1           00234 LCDSET          clrf LOOPB
+006B 01A6           00235                 clrf RSLINE
+006C 0821           00236 LCDST2          movf LOOPB,W
+006D 200A           00237                 call TABLCD
+006E 2163           00238                 call LCDOUT
+006F 0AA1           00239                 incf LOOPB,F
+0070 1DA1           00240                 btfss LOOPB,3
+0071 286C           00241                 goto LCDST2
+0072 2140           00242                 call PAUSIT
+                    00243                  
+0073 01A9           00244                 clrf MARK2
+0074 01A7           00245                 clrf SWITCH
+0075 01B5           00246                 clrf FREQ0
+0076 01B6           00247                 clrf FREQ1
+0077 01B7           00248                 clrf FREQ2
+0078 01B8           00249                 clrf FREQ3
+0079 01B9           00250                 clrf FREQ4
+007A 01B0           00251                 clrf ANSA1
+007B 01B1           00252                 clrf ANSA2
+007C 01B2           00253                 clrf ANSA3
+007D 01B3           00254                 clrf ANSA4
+007E 01B4           00255                 clrf ANSA5
+007F 01AA           00256                 clrf DEC1
+0080 01AB           00257                 clrf DEC2
+0081 01AC           00258                 clrf DEC3
+0082 01AD           00259                 clrf DEC4
+0083 01AE           00260                 clrf DEC5
+0084 01AF           00261                 clrf DEC6
+0085 01C9           00262                 clrf TENFLG
+0086 01CA           00263                 clrf TENCNT
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0087 01A8           00264                 clrf MARK1
+0088 01A9           00265                 clrf MARK2
+0089 01CB           00266                 clrf RANGE
+008A 01CD           00267                 clrf SAMPLE
+008B 3000           00268                 movlw 0                 ;......2
+008C 00CC           00269                 movwf SHAPE
+008D 22B8           00270                 call WAVE1
+008E 3019           00271                 movlw 25
+008F 00CE           00272                 movwf CLKVAL1
+0090 30FA           00273                 movlw 250
+0091 00CF           00274                 movwf CLKVAL2
+                    00275                  
+0092 084E           00276                 movf CLKVAL1,W
+0093 00BA           00277                 movwf CLKCNT
+                    00278                  
+0094 1608           00279                 bsf PORTD,4             ;reset counter IC6
+0095 1208           00280                 bcf PORTD,4
+0096 1688           00281                 bsf PORTD,5             ;enable clock input
+                    00282                  
+0097 3004           00283                 movlw 4
+0098 00CB           00284                 movwf RANGE
+0099 110B           00285                 bcf INTCON,2
+                    00286                  
+009A 2A17           00287                 goto SHWRNG
+                    00288                  
+                    00289                                         ;............................ END OF SETUP
+                    00290                  
+009B 1D0B           00291 MAIN            btfss INTCON,2
+009C 28A6           00292                 goto MF1
+009D 110B           00293                 bcf INTCON,2
+                    00294                  
+009E 0809           00295                 movf PORTE,W            ;is a range switch pressed?
+009F 1D03           00296                 btfss STATUS,Z
+00A0 2A0F           00297                 goto RANGESW            ;yes
+00A1 1806           00298                 btfsc PORTB,0           ;is waveshape switch pressed?
+00A2 22B3           00299                 call WAVEFRM            ;yes
+00A3 0BBA           00300                 decfsz CLKCNT,F         ;dec timing counter, is it 0
+00A4 28A6           00301                 goto MF1                ;no
+00A5 28B5           00302                 goto GETFREQ            ;yes
+                    00303                  
+00A6 20A8           00304 MF1             call INCCNT
+00A7 289B           00305                 goto MAIN
+                    00306                  
+                    00307                  
+00A8 1C07           00308 INCCNT          btfss PORTC,0
+00A9 28AC           00309                 goto MF2
+00AA 1429           00310                 bsf MARK2,0
+00AB 0008           00311                 return 
+                    00312                  
+00AC 1C29           00313 MF2             btfss MARK2,0           ;is MARK2 = 1?
+00AD 0008           00314                 return                  ;no
+00AE 1029           00315                 bcf MARK2,0
+00AF 0FB7           00316                 incfsz FREQ2,F          ;yes, inc counters accordingly
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  7
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00B0 0008           00317                 return                  ;(responds to negative-going aspect of IC6 Q12)
+00B1 0FB8           00318                 incfsz FREQ3,F
+00B2 0008           00319                 return 
+00B3 0AB9           00320                 incf FREQ4,F
+00B4 0008           00321                 return 
+                    00322                  
+                    00323                                         ;............show freq routine
+                    00324                  
+00B5 1288           00325 GETFREQ         bcf PORTD,5             ;turn off clock input
+00B6 0000           00326                 nop 
+00B7 0000           00327                 nop 
+00B8 20A8           00328                 call INCCNT             ;*****
+00B9 0808           00329                 movf PORTD,W            ;get pins which include Q0-Q3
+00BA 00C8           00330                 movwf STORED
+00BB 0807           00331                 movf PORTC,W
+00BC 00C7           00332                 movwf STOREC
+00BD 1688           00333                 bsf PORTD,5             ;turn on clock input
+                    00334                  
+00BE 1003           00335                 bcf STATUS,C            ;shift freq counters right by 4 places
+00BF 0CB9           00336                 rrf FREQ4,F
+00C0 0CB8           00337                 rrf FREQ3,F
+00C1 0CB7           00338                 rrf FREQ2,F
+00C2 0CB6           00339                 rrf FREQ1,F
+00C3 1003           00340                 bcf STATUS,C
+00C4 0CB9           00341                 rrf FREQ4,F
+00C5 0CB8           00342                 rrf FREQ3,F
+00C6 0CB7           00343                 rrf FREQ2,F
+00C7 0CB6           00344                 rrf FREQ1,F
+00C8 1003           00345                 bcf STATUS,C
+00C9 0CB9           00346                 rrf FREQ4,F
+00CA 0CB8           00347                 rrf FREQ3,F
+00CB 0CB7           00348                 rrf FREQ2,F
+00CC 0CB6           00349                 rrf FREQ1,F
+00CD 1003           00350                 bcf STATUS,C
+00CE 0CB9           00351                 rrf FREQ4,F
+00CF 0CB8           00352                 rrf FREQ3,F
+00D0 0CB7           00353                 rrf FREQ2,F
+00D1 0CB6           00354                 rrf FREQ1,F
+                    00355                  
+00D2 18C8           00356                 btfsc STORED,1          ;Q1
+00D3 1435           00357                 bsf FREQ0,0
+00D4 1948           00358                 btfsc STORED,2          ;Q2
+00D5 14B5           00359                 bsf FREQ0,1
+00D6 19C8           00360                 btfsc STORED,3          ;Q3
+00D7 1535           00361                 bsf FREQ0,2
+00D8 1A47           00362                 btfsc STOREC,4          ;Q4
+00D9 15B5           00363                 bsf FREQ0,3
+00DA 1B47           00364                 btfsc STOREC,6          ;Q5
+00DB 1635           00365                 bsf FREQ0,4
+00DC 1BC7           00366                 btfsc STOREC,7          ;Q6
+00DD 16B5           00367                 bsf FREQ0,5
+00DE 1AC7           00368                 btfsc STOREC,5          ;Q7
+00DF 1735           00369                 bsf FREQ0,6
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  8
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+00E0 19C7           00370                 btfsc STOREC,3          ;Q8
+00E1 17B5           00371                 bsf FREQ0,7
+                    00372                  
+00E2 1848           00373                 btfsc STORED,0          ;Q9
+00E3 1436           00374                 bsf FREQ1,0
+00E4 1947           00375                 btfsc STOREC,2          ;Q10
+00E5 14B6           00376                 bsf FREQ1,1
+00E6 18C7           00377                 btfsc STOREC,1          ;Q11
+00E7 1536           00378                 bsf FREQ1,2
+00E8 1847           00379                 btfsc STOREC,0          ;Q12
+00E9 15B6           00380                 bsf FREQ1,3
+                    00381                  
+00EA 3035           00382                 movlw FREQ0
+00EB 2196           00383                 call DECIML             ;decimalise digits 1 to 4 
+00EC 082A           00384                 movf DEC1,W             ;copy answer into OUT-OUT3
+00ED 00C4           00385                 movwf OUT0
+00EE 0830           00386                 movf ANSA1,W
+00EF 00C3           00387                 movwf OUT1
+00F0 0831           00388                 movf ANSA2,W
+00F1 00C2           00389                 movwf OUT2
+00F2 0832           00390                 movf ANSA3,W
+00F3 00C1           00391                 movwf OUT3
+                    00392                  
+00F4 0833           00393 GF3             movf ANSA4,W            ;copy overflow val into prev freq positions
+00F5 00B5           00394                 movwf FREQ0
+00F6 0834           00395                 movf ANSA5,W
+00F7 00B6           00396                 movwf FREQ1
+00F8 01B7           00397                 clrf FREQ2
+00F9 01B8           00398                 clrf FREQ3
+00FA 01B9           00399                 clrf FREQ4
+00FB 3035           00400                 movlw FREQ0
+00FC 2196           00401                 call DECIML             ;now decimal digits 5 to 8
+                    00402                  
+00FD 0832           00403                 movf ANSA3,W            ;copy answer into OUT4 to OUT7
+00FE 00BD           00404                 movwf OUT7
+00FF 0831           00405                 movf ANSA2,W
+0100 00BE           00406                 movwf OUT6
+0101 0830           00407                 movf ANSA1,W
+0102 00BF           00408                 movwf OUT5
+0103 082A           00409                 movf DEC1,W
+0104 00C0           00410                 movwf OUT4
+                    00411 
+                    00412 ; Added code to print "Freq:"
+                    00413 
+                    00414                  
+0105 2149           00415 GF4             call PFREQ               ;output freq data to LCD
+0106 1626           00416                 bsf RSLINE,4
+0107 01A8           00417                 clrf MARK1              ;clear leading zero flag
+                    00418                  
+0108 303D           00419                 movlw OUT7
+0109 0084           00420                 movwf FSR
+010A 3008           00421                 movlw 8
+010B 00A0           00422                 movwf LOOPA
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE  9
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+010C 0800           00423 MAINA           movf INDF,W
+010D 1D03           00424                 btfss STATUS,Z          ;is val = 0?
+010E 2917           00425                 goto MAINB              ;no
+010F 1828           00426                 btfsc MARK1,0           ;has val >0 been output?
+0110 2917           00427                 goto MAINB              ;yes
+0111 0820           00428                 movf LOOPA,W            ;is it the last byte of the loop?
+0112 3A01           00429                 xorlw 1
+0113 1903           00430                 btfsc STATUS,Z
+0114 2917           00431                 goto MAINB              ;yes
+0115 3020           00432                 movlw ' '               ;clear leading zero
+0116 291A           00433                 goto MAINC
+                    00434                  
+0117 1428           00435 MAINB           bsf MARK1,0             ;format as ASCII decimal val
+0118 390F           00436                 andlw 15
+0119 3830           00437                 iorlw 48
+                    00438                  
+011A 2163           00439 MAINC           call LCDOUT
+011B 0A84           00440                 incf FSR,F
+011C 0BA0           00441                 decfsz LOOPA,F
+011D 290C           00442                 goto MAINA
+011E 1C4D           00443                 btfss SAMPLE,0
+011F 292A           00444                 goto GF5
+0120 215C           00445                 call LCD12
+0121 1626           00446                 bsf RSLINE,4
+0122 302E           00447                 movlw '.'
+0123 2163           00448                 call LCDOUT
+                    00449                  
+0124 0384           00450                 decf FSR,F
+0125 0800           00451                 movf INDF,W
+0126 390F           00452                 andlw 15
+0127 3830           00453                 iorlw 48
+0128 2163           00454                 call LCDOUT
+0129 292C           00455                 goto GF6
+                    00456                  
+012A 3020           00457 GF5             movlw ' '
+012B 2163           00458                 call LCDOUT
+                    00459                  
+012C 3048           00460 GF6             movlw 'H'
+012D 2163           00461                 call LCDOUT
+012E 307A           00462                 movlw 'z'
+012F 2163           00463                 call LCDOUT
+                    00464                  
+0130 01B5           00465 MAINX           clrf FREQ0              ;clear freq counters
+0131 01B6           00466                 clrf FREQ1
+0132 01B7           00467                 clrf FREQ2
+0133 01B8           00468                 clrf FREQ3
+0134 01B9           00469                 clrf FREQ4
+0135 01A9           00470                 clrf MARK2
+                    00471                  
+0136 084E           00472                 movf CLKVAL1,W
+0137 184D           00473                 btfsc SAMPLE,0          ;is 10sec rate on?
+0138 084F           00474                 movf CLKVAL2,W
+0139 00BA           00475                 movwf CLKCNT
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 10
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+013A 1608           00476                 bsf PORTD,4             ;reset counter IC6
+013B 1208           00477                 bcf PORTD,4
+013C 1688           00478                 bsf PORTD,5             ;enable clock input
+                    00479                  
+013D 0181           00480                 clrf TMR0
+013E 110B           00481                 bcf INTCON,2            ;clear interrupt
+                    00482                  
+013F 289B           00483                 goto MAIN               ;start sampling next batch
+                    00484                  
+                    00485                                         ;.............
+                    00486                  
+0140 3007           00487 PAUSIT          movlw 7
+0141 00BB           00488                 movwf SLOWIT
+0142 110B           00489                 bcf INTCON,2
+0143 1D0B           00490 PAUSE           btfss INTCON,2
+0144 2943           00491                 goto PAUSE
+0145 110B           00492                 bcf INTCON,2
+0146 0BBB           00493                 decfsz SLOWIT,F
+0147 2943           00494                 goto PAUSE
+0148 0008           00495                 return 
+                    00496                  
+                    00497 
+                    00498 ; Print "Freq: " on second line
+0149                00499 PFREQ
+0149 215A           00500                 call LCD5
+014A 1626           00501                 bsf RSLINE,4
+014B 3046           00502                 movlw 'F'
+014C 2163           00503                 call LCDOUT
+014D 3072           00504                 movlw 'r'
+014E 2163           00505                 call LCDOUT
+014F 3065           00506                 movlw 'e'
+0150 2163           00507                 call LCDOUT
+0151 3071           00508                 movlw 'q'
+0152 2163           00509                 call LCDOUT
+0153 303A           00510                 movlw ':'
+0154 2163           00511                 call LCDOUT
+0155 3020           00512                 movlw ' '
+0156 2163           00513                 call LCDOUT
+0157 0008           00514                 return
+                    00515 
+                    00516                                         ;................
+                    00517                  
+0158 3080           00518 LCD1            movlw B'10000000'       ;WaveForm: 
+0159 2962           00519                 goto LCDLIN
+015A 30C0           00520 LCD5            movlw B'11000000'       ; 'COUNTING ' or '  Ok       0'
+015B 2962           00521                 goto LCDLIN
+015C 30CD           00522 LCD12           movlw B'11001101'       ; location of decimal point
+015D 2962           00523                 goto LCDLIN
+                    00524                  
+015E 3094           00525 LCD21           movlw B'10010100'       ; 'Range'
+015F 2962           00526                 goto LCDLIN
+0160 30D4           00527 LCD27           movlw B'11010100'       ; 'Time xx sec'
+0161 2962           00528                 goto LCDLIN
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 11
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                    00529                  
+                    00530                  
+0162 1226           00531 LCDLIN          bcf RSLINE,4
+                    00532                  
+0163 00A2           00533 LCDOUT          movwf STORE
+0164 3032           00534                 movlw 50
+0165 00BC           00535                 movwf LOOPX
+0166 0BBC           00536 DELAY           decfsz LOOPX,F
+0167 2966           00537                 goto DELAY
+0168 2169           00538                 call SENDIT
+0169 0EA2           00539 SENDIT          swapf STORE,F
+016A 0822           00540                 movf STORE,W
+016B 390F           00541                 andlw 15
+016C 0426           00542                 iorwf RSLINE,W
+016D 00C5           00543                 movwf LCDSTOR1
+016E 01C6           00544                 clrf LCDSTOR2
+016F 3006           00545                 movlw 6
+0170 00BC           00546                 movwf LOOPX
+                    00547                  
+0171 1003           00548 SHIFT           bcf STATUS,C            ;rearrange bits to suit PORTA pin order
+0172 0CC5           00549                 rrf LCDSTOR1,F
+0173 0DC6           00550                 rlf LCDSTOR2,F
+0174 0BBC           00551                 decfsz LOOPX,F
+0175 2971           00552                 goto SHIFT
+0176 0846           00553                 movf LCDSTOR2,W
+0177 0085           00554                 movwf PORTA
+0178 1405           00555                 bsf PORTA,0             ;toggle LCD line E
+0179 1005           00556                 bcf PORTA,0
+017A 1685           00557                 bsf PORTA,5             ;turn on IC2 sync output line
+017B 0008           00558                 return 
+                    00559                  
+                    00560                                         ;..............convert binary to hex - not used in final model
+                    00561                  
+017C 00A4           00562 LCDHEX          movwf STORE2            ;split & format decimal byte as HEX for LCD
+017D 0E24           00563                 swapf STORE2,W          ;get tens nibble
+017E 390F           00564                 andlw 15
+017F 00A3           00565                 movwf STORE1
+0180 3E06           00566                 addlw 6
+0181 1C83           00567                 btfss STATUS,DC
+0182 2986           00568                 goto HEX2
+0183 0823           00569                 movf STORE1,W
+0184 3E37           00570                 addlw 55                ;set as alpha
+0185 2988           00571                 goto HEX3
+0186 0823           00572 HEX2            movf STORE1,W
+0187 3830           00573                 iorlw 48                ;set as numeral
+0188 2163           00574 HEX3            call LCDOUT             ;send it
+0189 0824           00575                 movf STORE2,W           ;get units
+018A 390F           00576                 andlw 15
+018B 00A3           00577                 movwf STORE1
+018C 3E06           00578                 addlw 6
+018D 1C83           00579                 btfss STATUS,DC
+018E 2992           00580                 goto HEX4
+018F 0823           00581                 movf STORE1,W
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 12
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0190 3E37           00582                 addlw 55                ;set as alpha
+0191 2994           00583                 goto HEX5
+0192 0823           00584 HEX4            movf STORE1,W
+0193 3830           00585                 iorlw 48                ;set as numeral
+0194 2163           00586 HEX5            call LCDOUT
+0195 0008           00587                 return 
+                    00588                  
+                    00589                                         ;........... used to convert binary bytes to decimal for LCD
+                    00590                  
+0196                00591 DECIML                                  ;decimalise binary number
+                    00592                                         ;copy source into working area at DEC
+                    00593                                         ;source address is brought in on W
+                    00594                                         ;DEC1-5 becomes source
+                    00595                                         ;answer goes into ANSA
+0196 21FE           00596                 call COPYFD             ;copy data at FSR into DEC
+0197 01A3           00597                 clrf STORE1
+0198 01A5           00598                 clrf STORE3
+0199 01B4           00599                 clrf ANSA5
+019A 3033           00600                 movlw ANSA4             ;set answer store address
+019B 0084           00601                 movwf FSR
+019C 01A0           00602                 clrf LOOPA
+                    00603                  
+019D 0820           00604 DCML0           movf LOOPA,W
+019E 2013           00605                 call TBDEC1             ;subtract lsb from source value
+019F 02AA           00606                 subwf DEC1,F
+01A0 1803           00607                 btfsc STATUS,C          ;is there a borrow?
+01A1 29C2           00608                 goto DCML1              ;no, so sub msb
+01A2 3001           00609                 movlw 1
+01A3 02AB           00610                 subwf DEC2,F            ;yes so decrement next byte
+01A4 1803           00611                 btfsc STATUS,C          ;is there a borrow?
+01A5 29C2           00612                 goto DCML1              ;no, so sub msb
+01A6 3001           00613                 movlw 1                 ;yes
+01A7 02AC           00614                 subwf DEC3,F
+01A8 1803           00615                 btfsc STATUS,C          ;is there a borrow?
+01A9 29C2           00616                 goto DCML1              ;no, so sub msb
+01AA 3001           00617                 movlw 1                 ;yes
+01AB 02AD           00618                 subwf DEC4,F
+01AC 1803           00619                 btfsc STATUS,C          ;is there a borrow?
+01AD 29C2           00620                 goto DCML1              ;no, so sub msb
+01AE 3001           00621                 movlw 1                 ;yes
+01AF 02AE           00622                 subwf DEC5,F
+01B0 1803           00623                 btfsc STATUS,C          ;is there a borrow?
+01B1 29C2           00624                 goto DCML1              ;no, so sub msb
+                    00625                  
+01B2 0820           00626 DCML3           movf LOOPA,W            ;yes, so re-add last table values lsb
+01B3 2013           00627                 call TBDEC1
+01B4 07AA           00628                 addwf DEC1,F
+01B5 1C03           00629                 btfss STATUS,C          ;is there a carry?
+01B6 29F2           00630                 goto DCML5              ;no so exit loop
+01B7 0AAB           00631                 incf DEC2,F             ;yes so inc next byte
+01B8 1D03           00632                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01B9 29F2           00633                 goto DCML5              ;no so exit loop
+01BA 0AAC           00634                 incf DEC3,F             ;yes
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 13
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01BB 1D03           00635                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01BC 29F2           00636                 goto DCML5              ;no so exit loop
+01BD 0AAD           00637                 incf DEC4,F             ;yes
+01BE 1D03           00638                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01BF 29F2           00639                 goto DCML5              ;no so exit loop
+01C0 0AAE           00640                 incf DEC5,F             ;yes
+01C1 29F2           00641                 goto DCML5              ;exit loop
+                    00642                  
+01C2 0820           00643 DCML1           movf LOOPA,W
+01C3 2018           00644                 call TBDEC2             ;subtract msb from source value
+01C4 02AB           00645                 subwf DEC2,F
+01C5 1803           00646                 btfsc STATUS,C          ;is there a borrow?
+01C6 29D3           00647                 goto DCML2              ;no
+01C7 3001           00648                 movlw 1
+01C8 02AC           00649                 subwf DEC3,F            ;yes so decrement next byte
+01C9 1803           00650                 btfsc STATUS,C          ;is there a borrow?
+01CA 29D3           00651                 goto DCML2              ;no
+01CB 3001           00652                 movlw 1
+01CC 02AD           00653                 subwf DEC4,F            ;yes so decrement next byte
+01CD 1803           00654                 btfsc STATUS,C          ;is there a borrow?
+01CE 29D3           00655                 goto DCML2              ;no
+01CF 3001           00656                 movlw 1
+01D0 02AE           00657                 subwf DEC5,F            ;yes so decrement next byte
+01D1 1C03           00658                 btfss STATUS,C          ;is there a borrow?
+01D2 29D7           00659                 goto DCML4              ;yes
+                    00660                  
+01D3 0FA3           00661 DCML2           incfsz STORE1,F         ;inc counter & continue looping till zero
+01D4 299D           00662                 goto DCML0
+01D5 0AA5           00663                 incf STORE3,F
+01D6 299D           00664                 goto DCML0
+                    00665                  
+01D7 0820           00666 DCML4           movf LOOPA,W            ;re-add last table values lsb
+01D8 2013           00667                 call TBDEC1
+01D9 07AA           00668                 addwf DEC1,F
+01DA 1C03           00669                 btfss STATUS,C          ;is there a carry?
+01DB 29E6           00670                 goto DCML4A             ;no so add msb
+01DC 0AAB           00671                 incf DEC2,F             ;yes so inc next byte
+01DD 1D03           00672                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01DE 29E6           00673                 goto DCML4A             ;no so add msb
+01DF 0AAC           00674                 incf DEC3,F             ;yes, so inc next byte
+01E0 1D03           00675                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01E1 29E6           00676                 goto DCML4A             ;no so add msb
+01E2 0AAD           00677                 incf DEC4,F             ;yes, so inc next byte
+01E3 1D03           00678                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01E4 29E6           00679                 goto DCML4A             ;no so add msb
+01E5 0AAE           00680                 incf DEC5,F             ;yes, so inc next byte
+                    00681                  
+01E6 0820           00682 DCML4A          movf LOOPA,W            ;re-add last table values msb
+01E7 2018           00683                 call TBDEC2
+01E8 07AB           00684                 addwf DEC2,F
+01E9 1C03           00685                 btfss STATUS,C          ;is there a carry?
+01EA 29F2           00686                 goto DCML5              ;no
+01EB 0AAC           00687                 incf DEC3,F             ;yes, so inc next byte
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 14
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01EC 1D03           00688                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01ED 29F2           00689                 goto DCML5              ;no
+01EE 0AAD           00690                 incf DEC4,F             ;yes, so inc next byte
+01EF 1D03           00691                 btfss STATUS,Z          ;is there a carry? (is it zero)
+01F0 29F2           00692                 goto DCML5              ;no
+01F1 0AAE           00693                 incf DEC5,F             ;yes, so inc next byte
+                    00694                  
+01F2 0825           00695 DCML5           movf STORE3,W
+01F3 1D03           00696                 btfss STATUS,Z
+01F4 00B4           00697                 movwf ANSA5
+01F5 0823           00698                 movf STORE1,W           ;store counter and loop for next values
+01F6 0080           00699                 movwf INDF              ;INDF here is ANSA group
+                    00700                  
+01F7 01A3           00701                 clrf STORE1
+01F8 01A5           00702                 clrf STORE3
+01F9 0384           00703                 decf FSR,F
+                    00704                  
+01FA 0AA0           00705                 incf LOOPA,F
+01FB 1D20           00706                 btfss LOOPA,2           ;is it = 4?
+01FC 299D           00707                 goto DCML0              ;no
+                    00708                  
+01FD 0008           00709 DCML6           return 
+                    00710                  
+01FE 0084           00711 COPYFD          movwf FSR               ;copy data at FSR to DEC
+01FF 0800           00712                 movf INDF,W
+0200 00AA           00713                 movwf DEC1
+0201 0A84           00714                 incf FSR,F
+0202 0800           00715                 movf INDF,W
+0203 00AB           00716                 movwf DEC2
+0204 0A84           00717                 incf FSR,F
+0205 0800           00718                 movf INDF,W
+0206 00AC           00719                 movwf DEC3
+0207 0A84           00720                 incf FSR,F
+0208 0800           00721                 movf INDF,W
+0209 00AD           00722                 movwf DEC4
+020A 0A84           00723                 incf FSR,F
+020B 0800           00724                 movf INDF,W
+020C 00AE           00725                 movwf DEC5
+020D 01AF           00726                 clrf DEC6
+020E 0008           00727                 return 
+                    00728                  
+                    00729                                         ;...........range switch
+                    00730                  
+020F 1909           00731 RANGESW         btfsc PORTE,2
+0210 2A4E           00732                 goto SAMRATE
+0211 22A0           00733                 call OK
+                    00734                  
+0212 1889           00735                 btfsc PORTE,1
+0213 2A16           00736                 goto DECRNG
+                    00737                  
+0214 0A4B           00738 INCRNG          incf RANGE,W
+0215 2A17           00739                 goto SHWRNG
+0216 034B           00740 DECRNG          decf RANGE,W
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 15
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                    00741                  
+0217 3907           00742 SHWRNG          andlw 7
+0218 00CB           00743                 movwf RANGE
+0219 215E           00744                 call LCD21
+021A 1626           00745                 bsf RSLINE,4
+021B 3046           00746                 movlw 'F'
+021C 2163           00747                 call LCDOUT
+021D 3072           00748                 movlw 'r'
+021E 2163           00749                 call LCDOUT
+021F 3065           00750                 movlw 'e'
+0220 2163           00751                 call LCDOUT
+0221 3071           00752                 movlw 'q'
+0222 2163           00753                 call LCDOUT
+0223 3020           00754                 movlw ' '
+0224 2163           00755                 call LCDOUT
+0225 3052           00756                 movlw 'R'
+0226 2163           00757                 call LCDOUT
+0227 3061           00758                 movlw 'a'
+0228 2163           00759                 call LCDOUT
+0229 306E           00760                 movlw 'n'
+022A 2163           00761                 call LCDOUT
+022B 3067           00762                 movlw 'g'
+022C 2163           00763                 call LCDOUT
+022D 3065           00764                 movlw 'e'
+022E 2163           00765                 call LCDOUT
+022F 3020           00766                 movlw ' '
+0230 2163           00767                 call LCDOUT
+                    00768                  
+0231 084B           00769                 movf RANGE,W
+0232 3C07           00770                 sublw 7
+                    00771                  
+0233 3830           00772                 iorlw 48
+0234 2163           00773                 call LCDOUT
+0235 0806           00774                 movf PORTB,W
+0236 39C0           00775                 andlw B'11000000'
+0237 0086           00776                 movwf PORTB
+                    00777                  
+0238 1308           00778                 bcf PORTD,6
+0239 1388           00779                 bcf PORTD,7
+                    00780                  
+023A 084B           00781                 movf RANGE,W
+023B 201D           00782                 call RANGIT
+023C 393F           00783                 andlw B'00111111'
+023D 1683           00784                 PAGE1 
+023E 0086           00785                 movwf TRISB
+023F 1283           00786                 PAGE0 
+0240 084B           00787                 movf RANGE,W
+0241 201D           00788                 call RANGIT
+0242 39C0           00789                 andlw B'11000000'
+0243 380F           00790                 iorlw B'00001111'
+0244 1683           00791                 PAGE1 
+0245 0088           00792                 movwf TRISD
+0246 1283           00793                 PAGE0 
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 16
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0247 2140           00794                 call PAUSIT
+0248 2140           00795                 call PAUSIT
+0249 0809           00796                 movf PORTE,W
+024A 3903           00797                 andlw 3
+024B 1D03           00798                 btfss STATUS,Z
+024C 2A0F           00799                 goto RANGESW
+024D 2A51           00800                 goto SAM1
+                    00801                  
+                    00802                                         ;...........set sample rate 1sec/10sec
+                    00803                  
+024E 0ACD           00804 SAMRATE         incf SAMPLE,F
+024F 10CD           00805                 bcf SAMPLE,1
+0250 22A0           00806                 call OK
+                    00807                  
+0251 01B5           00808 SAM1            clrf FREQ0              ;clear freq counters
+0252 01B6           00809                 clrf FREQ1
+0253 01B7           00810                 clrf FREQ2
+0254 01B8           00811                 clrf FREQ3
+0255 01B9           00812                 clrf FREQ4
+0256 01A9           00813                 clrf MARK2
+                    00814                  
+0257 2160           00815                 call LCD27
+0258 1626           00816                 bsf RSLINE,4
+0259 3043           00817                 movlw 'C'
+025A 2163           00818                 call LCDOUT
+025B 306F           00819                 movlw 'o'
+025C 2163           00820                 call LCDOUT
+025D 3075           00821                 movlw 'u'
+025E 2163           00822                 call LCDOUT
+025F 306E           00823                 movlw 'n'
+0260 2163           00824                 call LCDOUT
+0261 3074           00825                 movlw 't'
+0262 2163           00826                 call LCDOUT
+0263 3020           00827                 movlw ' '
+0264 2163           00828                 call LCDOUT
+0265 3054           00829                 movlw 'T'
+0266 2163           00830                 call LCDOUT
+0267 3069           00831                 movlw 'i'
+0268 2163           00832                 call LCDOUT
+0269 306D           00833                 movlw 'm'
+026A 2163           00834                 call LCDOUT
+026B 3065           00835                 movlw 'e'
+026C 2163           00836                 call LCDOUT
+026D 303A           00837                 movlw ':'
+026E 2163           00838                 call LCDOUT
+026F 3020           00839                 movlw ' '
+0270 2163           00840                 call LCDOUT
+0271 3031           00841                 movlw '1'
+0272 2163           00842                 call LCDOUT
+0273 3020           00843                 movlw ' '
+0274 184D           00844                 btfsc SAMPLE,0
+0275 3030           00845                 movlw '0'
+0276 2163           00846                 call LCDOUT
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 17
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0277 3073           00847                 movlw 's'
+0278 2163           00848                 call LCDOUT
+0279 3065           00849                 movlw 'e'
+027A 2163           00850                 call LCDOUT
+027B 3063           00851                 movlw 'c'
+027C 2163           00852                 call LCDOUT
+                    00853                  
+027D 0809           00854 SAM3            movf PORTE,W
+027E 3907           00855                 andlw 7
+027F 1D03           00856                 btfss STATUS,Z
+0280 2A7D           00857                 goto SAM3
+                    00858                  
+0281 2149           00859                 call PFREQ               ;output freq data to LCD
+0282 1626           00860                 bsf RSLINE,4
+0283 3020           00861                 movlw ' '
+0284 2163           00862                 call LCDOUT
+0285 3020           00863                 movlw ' '
+0286 2163           00864                 call LCDOUT
+0287 3043           00865                 movlw 'C'
+0288 2163           00866                 call LCDOUT
+0289 304F           00867                 movlw 'O'
+028A 2163           00868                 call LCDOUT
+028B 3055           00869                 movlw 'U'
+028C 2163           00870                 call LCDOUT
+028D 304E           00871                 movlw 'N'
+028E 2163           00872                 call LCDOUT
+028F 3054           00873                 movlw 'T'
+0290 2163           00874                 call LCDOUT
+0291 3049           00875                 movlw 'I'
+0292 2163           00876                 call LCDOUT
+0293 304E           00877                 movlw 'N'
+0294 2163           00878                 call LCDOUT
+0295 3047           00879                 movlw 'G'
+0296 2163           00880                 call LCDOUT
+0297 3020           00881                 movlw ' '
+0298 2163           00882                 call LCDOUT
+                    00883                  
+0299 084E           00884                 movf CLKVAL1,W
+029A 184D           00885                 btfsc SAMPLE,0
+029B 084F           00886                 movf CLKVAL2,W
+029C 00BA           00887                 movwf CLKCNT
+                    00888                  
+029D 1608           00889                 bsf PORTD,4             ;reset counter IC6
+029E 1208           00890                 bcf PORTD,4
+                    00891                  
+029F 289B           00892                 goto MAIN
+                    00893                  
+02A0 2149           00894 OK              call PFREQ               ;output freq data to LCD
+02A1 1626           00895                 bsf RSLINE,4
+02A2 3020           00896                 movlw ' '
+02A3 2163           00897                 call LCDOUT
+02A4 3020           00898                 movlw ' '
+02A5 2163           00899                 call LCDOUT
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 18
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+02A6 304F           00900                 movlw 'O'
+02A7 2163           00901                 call LCDOUT
+02A8 304B           00902                 movlw 'K'
+02A9 2163           00903                 call LCDOUT
+                    00904                  
+02AA 3006           00905                 movlw 6
+02AB 00A0           00906                 movwf LOOPA
+02AC 3020           00907 OK2             movlw ' '
+02AD 2163           00908                 call LCDOUT
+02AE 0BA0           00909                 decfsz LOOPA,F
+02AF 2AAC           00910                 goto OK2
+02B0 3030           00911                 movlw '0'
+02B1 2163           00912                 call LCDOUT
+02B2 0008           00913                 return 
+                    00914                  
+                    00915                                         ;........
+                    00916                  
+02B3 0ACC           00917 WAVEFRM         incf SHAPE,F
+02B4 084C           00918                 movf SHAPE,W
+02B5 3A03           00919                 xorlw B'00000011'
+02B6 1903           00920                 btfsc STATUS,Z
+02B7 01CC           00921                 clrf SHAPE
+                    00922                  
+02B8 2158           00923 WAVE1           call LCD1               ;output freq data to LCD
+02B9 1626           00924                 bsf RSLINE,4
+                    00925 
+02BA 01A1           00926                 clrf LOOPB
+02BB 0821           00927 WF2             movf LOOPB,W
+02BC 2026           00928                 call WAVEFORM
+02BD 2163           00929                 call LCDOUT
+02BE 0AA1           00930                 incf LOOPB,F
+02BF 1DA1           00931                 btfss LOOPB,3           ; check the eight bit
+02C0 2ABB           00932                 goto WF2
+02C1 1CA1           00933                 btfss LOOPB,1           ;  and the 2 bit makes 10
+02C2 2ABB           00934                 goto WF2
+                    00935 
+02C3 01A0           00936                 clrf LOOPA
+02C4 084C           00937 WAVE2           movf SHAPE,W
+02C5 2031           00938                 call WAVEIT
+02C6 2163           00939                 call LCDOUT
+02C7 0AA0           00940                 incf LOOPA,F
+02C8 1DA0           00941                 btfss LOOPA,3           ; checks for eight positions
+02C9 2AC4           00942                 goto WAVE2
+                    00943                  
+02CA 0E4C           00944                 swapf SHAPE,W
+02CB 00A2           00945                 movwf STORE
+02CC 0DA2           00946                 rlf STORE,F
+02CD 0D22           00947                 rlf STORE,W
+02CE 39C0           00948                 andlw B'11000000'
+02CF 00A2           00949                 movwf STORE
+02D0 0806           00950                 movf PORTB,W
+02D1 393F           00951                 andlw B'00111111'
+02D2 0422           00952                 iorwf STORE,W
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 19
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+02D3 0086           00953                 movwf PORTB
+                    00954                  
+02D4 1806           00955 WAVE3           btfsc PORTB,0
+02D5 2AD4           00956                 goto WAVE3
+02D6 2140           00957                 call PAUSIT
+02D7 0008           00958                 return 
+                    00959                  
+                    00960                 end 
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 20
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ADCON0                            0000001F
+ADCON1                            0000001F
+ANSA1                             00000030
+ANSA2                             00000031
+ANSA3                             00000032
+ANSA4                             00000033
+ANSA5                             00000034
+C                                 00000000
+CLKCNT                            0000003A
+CLKVAL1                           0000004E
+CLKVAL2                           0000004F
+COPYFD                            000001FE
+DC                                00000001
+DCML0                             0000019D
+DCML1                             000001C2
+DCML2                             000001D3
+DCML3                             000001B2
+DCML4                             000001D7
+DCML4A                            000001E6
+DCML5                             000001F2
+DCML6                             000001FD
+DEC1                              0000002A
+DEC2                              0000002B
+DEC3                              0000002C
+DEC4                              0000002D
+DEC5                              0000002E
+DEC6                              0000002F
+DECIML                            00000196
+DECRNG                            00000216
+DELAY                             00000166
+F                                 00000001
+FREQ0                             00000035
+FREQ1                             00000036
+FREQ2                             00000037
+FREQ3                             00000038
+FREQ4                             00000039
+FSR                               00000004
+GETFREQ                           000000B5
+GF3                               000000F4
+GF4                               00000105
+GF5                               0000012A
+GF6                               0000012C
+GIE                               00000007
+GIEOFF                            00000006
+HEX2                              00000186
+HEX3                              00000188
+HEX4                              00000192
+HEX5                              00000194
+INCCNT                            000000A8
+INCRNG                            00000214
+INDF                              00000000
+INTCON                            0000000B
+LCD1                              00000158
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 21
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LCD12                             0000015C
+LCD21                             0000015E
+LCD27                             00000160
+LCD5                              0000015A
+LCDHEX                            0000017C
+LCDLIN                            00000162
+LCDOUT                            00000163
+LCDSET                            0000006A
+LCDST2                            0000006C
+LCDSTOR1                          00000045
+LCDSTOR2                          00000046
+LOOPA                             00000020
+LOOPB                             00000021
+LOOPX                             0000003C
+MAIN                              0000009B
+MAINA                             0000010C
+MAINB                             00000117
+MAINC                             0000011A
+MAINX                             00000130
+MARK1                             00000028
+MARK2                             00000029
+MF1                               000000A6
+MF2                               000000AC
+OK                                000002A0
+OK2                               000002AC
+OPSHUN                            00000001
+OUT0                              00000044
+OUT1                              00000043
+OUT2                              00000042
+OUT3                              00000041
+OUT4                              00000040
+OUT5                              0000003F
+OUT6                              0000003E
+OUT7                              0000003D
+PAGE0                             BCF STATUS,RP0
+PAGE1                             BSF STATUS,RP0
+PAUSE                             00000143
+PAUSIT                            00000140
+PCL                               00000002
+PFREQ                             00000149
+PORTA                             00000005
+PORTB                             00000006
+PORTC                             00000007
+PORTD                             00000008
+PORTE                             00000009
+RANGE                             0000004B
+RANGESW                           0000020F
+RANGIT                            0000001D
+RESET                             00000005
+RP0                               00000005
+RP1                               00000006
+RSLINE                            00000026
+SAM1                              00000251
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 22
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SAM3                              0000027D
+SAMPLE                            0000004D
+SAMRATE                           0000024E
+SENDIT                            00000169
+SHAPE                             0000004C
+SHIFT                             00000171
+SHWRNG                            00000217
+SINE                              00000035
+SLOWIT                            0000003B
+SQUARE                            0000003F
+START                             00000053
+STATUS                            00000003
+STORE                             00000022
+STORE1                            00000023
+STORE2                            00000024
+STORE3                            00000025
+STOREC                            00000047
+STORED                            00000048
+SWITCH                            00000027
+TABLCD                            0000000A
+TBDEC1                            00000013
+TBDEC2                            00000018
+TENCNT                            0000004A
+TENFLG                            00000049
+TMR0                              00000001
+TRISA                             00000005
+TRISB                             00000006
+TRISC                             00000007
+TRISD                             00000008
+TRISE                             00000009
+TRNGLE                            00000049
+W                                 00000000
+WAVE1                             000002B8
+WAVE2                             000002C4
+WAVE3                             000002D4
+WAVEFORM                          00000026
+WAVEFRM                           000002B3
+WAVEIT                            00000031
+WF2                               000002BB
+Z                                 00000002
+__16F877                          00000001
+MPASM 02.30 Released         PICGN220.ASM   11-30-2002  14:46:55         PAGE 23
+
+
+MEMORY USAGE MAP ('X' = Used,  '-' = Unused)
+
+
+0000 : X---XXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0040 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0080 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+00C0 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0100 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0140 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0180 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+01C0 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0200 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0240 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+0280 : XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXX
+02C0 : XXXXXXXXXXXXXXXX XXXXXXXX-------- ---------------- ----------------
+2000 : -------X-------- ---------------- ---------------- ----------------
+
+All other memory blocks unused.
+
+Program Memory Words Used:   725
+Program Memory Words Free:  7467
+
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     0 reported,     0 suppressed
+
+
